@@ -69,8 +69,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.detection.info("Pocket Study Remote launched")
 
         #if DEBUG
-        NSApp.activate(ignoringOtherApps: true)
-        DebugLaunchSupport.showHostWindow()
+        // Order window on the next turn — same-tick ordering can leave a 0×0 layout or sit behind the AX prompt.
+        DispatchQueue.main.async {
+            NSApp.unhide(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            DebugLaunchSupport.showHostWindow()
+        }
         #endif
     }
 
@@ -168,22 +172,27 @@ private enum DebugLaunchSupport {
 
     static func showHostWindow() {
         if let w = window {
-            w.makeKeyAndOrderFront(nil)
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
+            w.makeKeyAndOrderFront(nil)
+            w.orderFrontRegardless()
             return
         }
 
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 240),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 280),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         w.title = "Pocket Study Remote (Debug)"
         w.isReleasedWhenClosed = false
-        w.level = .floating
-        w.center()
+        // Above normal floating windows so it isn’t lost behind other apps.
+        w.level = .modalPanel
         w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        w.isOpaque = true
+        w.backgroundColor = .windowBackgroundColor
+        w.minSize = NSSize(width: 440, height: 220)
 
         let label = NSTextField(wrappingLabelWithString: """
         Debug build — this window and a Dock icon are intentional. Release builds stay menu-bar-only (no Dock).
@@ -192,7 +201,7 @@ private enum DebugLaunchSupport {
         """)
         label.font = .systemFont(ofSize: 13)
         label.maximumNumberOfLines = 0
-        label.preferredMaxLayoutWidth = 490
+        label.preferredMaxLayoutWidth = 500
 
         let quitBtn = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
         quitBtn.keyEquivalent = "q"
@@ -203,18 +212,16 @@ private enum DebugLaunchSupport {
         stack.alignment = .leading
         stack.spacing = 16
         stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.translatesAutoresizingMaskIntoConstraints = true
+        stack.autoresizingMask = [.width, .height]
 
-        let container = NSView()
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 280))
+        stack.frame = container.bounds
         container.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
+
         w.contentView = container
-        w.setContentSize(NSSize(width: 540, height: 260))
+        w.setContentSize(NSSize(width: 560, height: 300))
+        w.center()
 
         let del = DebugHostWindowDelegate {
             DebugLaunchSupport.window = nil
@@ -224,8 +231,12 @@ private enum DebugLaunchSupport {
         delegateRetain = del
         window = w
 
-        w.makeKeyAndOrderFront(nil)
+        container.layoutSubtreeIfNeeded()
+
+        NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+        w.orderFrontRegardless()
     }
 }
 
