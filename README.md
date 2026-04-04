@@ -31,10 +31,20 @@ A toast overlay appears for ~1.5 seconds whenever the mode changes.
 4. Ensure **App Sandbox** is off for this target (the project is configured with `ENABLE_APP_SANDBOX = NO`). Accessibility and `CGEventPost` require it.
 5. On first run, grant **Accessibility** when prompted (System Settings → Privacy & Security → Accessibility).
 
-Command-line build (unsigned, good for CI):
+**CLI: build + open in one step** (unsigned Debug build into `build/RunDerived`):
 
 ```bash
-xcodebuild -project PocketStudyRemote.xcodeproj -scheme PocketStudyRemote -configuration Debug CODE_SIGNING_ALLOWED=NO build
+./scripts/run.sh
+```
+
+There is **no Dock icon** — look for the **game-controller** symbol in the **menu bar** (right). On a full menu bar, open the **«** overflow; hover until the tooltip **Pocket Study Remote** appears.
+
+Raw `xcodebuild` only compiles; it does **not** launch the app unless you also `open …/PocketStudyRemote.app` or use the script above.
+
+Command-line build only (unsigned, e.g. for CI):
+
+```bash
+xcodebuild -project PocketStudyRemote.xcodeproj -scheme PocketStudyRemote -configuration Debug -derivedDataPath build/RunDerived CODE_SIGNING_ALLOWED=NO build
 ```
 
 Update `PRODUCT_BUNDLE_IDENTIFIER` in the target settings and `CFBundleIdentifier` in `Resources/Info.plist` before shipping.
