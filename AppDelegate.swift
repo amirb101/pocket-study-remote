@@ -45,11 +45,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Menu bar–only agent: no Dock, no app switcher entry — icon lives in the status area.
-        // Must run before creating `NSStatusItem` (see `menuBar`); otherwise the item can fail to appear.
+        // Release: accessory agent (no Dock). Debug: regular app — LSUIElement overridden in target Debug settings
+        // so `NSAlert` / windows can appear; LSUIElement agent apps often never surface modals on screen.
+        #if DEBUG
+        if !NSApp.setActivationPolicy(.regular) {
+            Logger.detection.error("setActivationPolicy(.regular) failed (Debug)")
+        }
+        #else
         if !NSApp.setActivationPolicy(.accessory) {
             Logger.detection.error("setActivationPolicy(.accessory) failed — menu bar item may be missing")
         }
+        #endif
 
         requestAccessibilityPermissionIfNeeded()
         wireComponents()
@@ -63,30 +69,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.detection.info("Pocket Study Remote launched")
 
         #if DEBUG
-        // Debug: force something visible on screen — menu-only apps are easy to think “didn’t run”.
         NSApp.activate(ignoringOtherApps: true)
-        showDebugLaunchAlert()
+        DebugLaunchSupport.showHostWindow()
         #endif
     }
 
     #if DEBUG
-    private func showDebugLaunchAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Pocket Study Remote is running"
-        alert.informativeText = """
-        This dialog only appears in Debug builds.
-
-        The normal UI is the small game-controller icon in the menu bar (top-right). If the bar is full, open the « overflow next to the clock and look for the icon (tooltip: “Pocket Study Remote”).
-        """
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Open Accessibility Settings")
-        alert.alertStyle = .informational
-        let response = alert.runModal()
-        if response == .alertSecondButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            DebugLaunchSupport.showHostWindow()
         }
+        return true
     }
     #endif
 
@@ -150,6 +143,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return registry
     }
 }
+
+#if DEBUG
+
+// LSUIElement / accessory apps often never show `NSAlert` or take focus — Debug target sets `LSUIElement=NO`
+// and we use a real window + `.regular` activation so you can always see something.
+
+private final class DebugHostWindowDelegate: NSObject, NSWindowDelegate {
+    let onClosed: () -> Void
+
+    init(onClosed: @escaping () -> Void) {
+        self.onClosed = onClosed
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onClosed()
+    }
+}
+
+@MainActor
+private enum DebugLaunchSupport {
+    private static var window: NSWindow?
+    private static var delegateRetain: DebugHostWindowDelegate?
+
+    static func showHostWindow() {
+        if let w = window {
+            w.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let w = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 240),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        w.title = "Pocket Study Remote (Debug)"
+        w.isReleasedWhenClosed = false
+        w.level = .floating
+        w.center()
+        w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+
+        let label = NSTextField(wrappingLabelWithString: """
+        Debug build — this window and a Dock icon are intentional. Release builds stay menu-bar-only (no Dock).
+
+        The controller UI is still the game-controller item in the menu bar (try « overflow). Tooltip: “Pocket Study Remote”.
+        """)
+        label.font = .systemFont(ofSize: 13)
+        label.maximumNumberOfLines = 0
+        label.preferredMaxLayoutWidth = 490
+
+        let quitBtn = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
+        quitBtn.keyEquivalent = "q"
+        quitBtn.keyEquivalentModifierMask = .command
+
+        let stack = NSStackView(views: [label, quitBtn])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 16
+        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let container = NSView()
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        w.contentView = container
+        w.setContentSize(NSSize(width: 540, height: 260))
+
+        let del = DebugHostWindowDelegate {
+            DebugLaunchSupport.window = nil
+            DebugLaunchSupport.delegateRetain = nil
+        }
+        w.delegate = del
+        delegateRetain = del
+        window = w
+
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+#endif
 
 // MARK: - ControllerManager Connection Callback
 
