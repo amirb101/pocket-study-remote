@@ -39,7 +39,7 @@ A toast overlay appears for ~1.5 seconds whenever the mode changes.
 
 There is **no Dock icon** — look for the **game-controller** symbol in the **menu bar** (right). On a full menu bar, open the **«** overflow; hover until the tooltip **Pocket Study Remote** appears.
 
-**Debug builds** use `Resources/Info-Debug.plist` (`LSUIElement = false`): you get a **Dock icon**, a **floating “Pocket Study Remote (Debug)”** window on launch, and `setActivationPolicy(.regular)` so UI can take focus. Pure **LSUIElement** agent apps often never show alerts or come forward — that’s why Release still uses `Info.plist` with `LSUIElement = true` (menu bar only, no Dock).
+**Debug builds** use `Resources/Info-Debug.plist` (`LSUIElement = false`): you get a **Dock icon**, a **host window** shortly after launch, and `setActivationPolicy(.regular)`. The app decides this from the **embedded** `LSUIElement` value (not only the Swift `DEBUG` flag), so it matches what Xcode/`xcodebuild` actually bundled. If the window doesn’t appear, confirm the build log shows `ProcessInfoPlistFile … Info-Debug.plist` (not `Info.plist` alone). Running the executable from Terminal shows `PocketStudyRemote: showHostWindow …` on stderr when that code runs.
 
 Raw `xcodebuild` only compiles; it does **not** launch the app unless you also `open …/PocketStudyRemote.app` or use the script above.
 

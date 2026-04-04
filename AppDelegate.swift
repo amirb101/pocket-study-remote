@@ -4,6 +4,20 @@ import GameController
 import ObjectiveC
 import os
 
+// MARK: - Bundle (Debug vs Release packaging)
+
+private extension Bundle {
+
+    /// `Resources/Info.plist` sets `LSUIElement = true` (menu-bar-only). `Info-Debug.plist` sets `false` (Dock + windows).
+    /// Do not rely on Swift `-DDEBUG` alone — match what was actually embedded in the app bundle.
+    var psr_isMenuBarAgentOnly: Bool {
+        guard let v = object(forInfoDictionaryKey: "LSUIElement") else { return false }
+        if let b = v as? Bool { return b }
+        if let n = v as? NSNumber { return n.boolValue }
+        return false
+    }
+}
+
 /// Entry point and dependency wiring.
 ///
 /// `AppDelegate` is intentionally thin — it creates every component,
@@ -45,17 +59,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Release: accessory agent (no Dock). Debug: regular app — LSUIElement overridden in target Debug settings
-        // so `NSAlert` / windows can appear; LSUIElement agent apps often never surface modals on screen.
-        #if DEBUG
-        if !NSApp.setActivationPolicy(.regular) {
-            Logger.detection.error("setActivationPolicy(.regular) failed (Debug)")
+        if Bundle.main.psr_isMenuBarAgentOnly {
+            if !NSApp.setActivationPolicy(.accessory) {
+                Logger.detection.error("setActivationPolicy(.accessory) failed — menu bar item may be missing")
+            }
+        } else {
+            if !NSApp.setActivationPolicy(.regular) {
+                Logger.detection.error("setActivationPolicy(.regular) failed — Debug plist expects a normal app")
+            }
         }
-        #else
-        if !NSApp.setActivationPolicy(.accessory) {
-            Logger.detection.error("setActivationPolicy(.accessory) failed — menu bar item may be missing")
-        }
-        #endif
 
         requestAccessibilityPermissionIfNeeded()
         wireComponents()
@@ -68,24 +80,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Logger.detection.info("Pocket Study Remote launched")
 
-        #if DEBUG
-        // Order window on the next turn — same-tick ordering can leave a 0×0 layout or sit behind the AX prompt.
-        DispatchQueue.main.async {
-            NSApp.unhide(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            DebugLaunchSupport.showHostWindow()
+        if !Bundle.main.psr_isMenuBarAgentOnly {
+            // After AX sheet / layout; `hasVisibleWindows` on Dock click is often wrong — reopen always calls `showHostWindow` too.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                NSApp.unhide(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                DebugLaunchSupport.showHostWindow()
+            }
         }
-        #endif
     }
 
-    #if DEBUG
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
+    /// Bring back the host window whenever the Dock icon is clicked (Debug / non–LSUIElement builds only).
+    @objc func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !Bundle.main.psr_isMenuBarAgentOnly {
             DebugLaunchSupport.showHostWindow()
         }
         return true
     }
-    #endif
 
     func applicationWillTerminate(_ notification: Notification) {
         GCController.stopWirelessControllerDiscovery()
@@ -148,11 +159,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-#if DEBUG
-
-// LSUIElement / accessory apps often never show `NSAlert` or take focus — Debug target sets `LSUIElement=NO`
-// and we use a real window + `.regular` activation so you can always see something.
-
 private final class DebugHostWindowDelegate: NSObject, NSWindowDelegate {
     let onClosed: () -> Void
 
@@ -171,57 +177,53 @@ private enum DebugLaunchSupport {
     private static var delegateRetain: DebugHostWindowDelegate?
 
     static func showHostWindow() {
+        fputs("PocketStudyRemote: showHostWindow (LSUIElement=\(Bundle.main.psr_isMenuBarAgentOnly))\n", stderr)
+
         if let w = window {
             NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
+            positionWindowOnMainScreen(w)
             w.makeKeyAndOrderFront(nil)
             w.orderFrontRegardless()
             return
         }
 
-        let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 280),
+        let w = KeyableHostWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 320),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         w.title = "Pocket Study Remote (Debug)"
         w.isReleasedWhenClosed = false
-        // Above normal floating windows so it isn’t lost behind other apps.
-        w.level = .modalPanel
-        w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        w.level = .normal
+        w.collectionBehavior = [.moveToActiveSpace]
         w.isOpaque = true
         w.backgroundColor = .windowBackgroundColor
-        w.minSize = NSSize(width: 440, height: 220)
+        w.minSize = NSSize(width: 440, height: 240)
+
+        let container = FlippedOriginView(frame: NSRect(x: 0, y: 0, width: 560, height: 300))
 
         let label = NSTextField(wrappingLabelWithString: """
-        Debug build — this window and a Dock icon are intentional. Release builds stay menu-bar-only (no Dock).
+        Debug / non–LSUIElement build — Dock icon and this window are expected. Release will be menu-bar-only.
 
-        The controller UI is still the game-controller item in the menu bar (try « overflow). Tooltip: “Pocket Study Remote”.
+        Main controller UI: game-controller icon in the menu bar (« overflow if needed). Tooltip: “Pocket Study Remote”.
         """)
         label.font = .systemFont(ofSize: 13)
-        label.maximumNumberOfLines = 0
-        label.preferredMaxLayoutWidth = 500
+        label.frame = NSRect(x: 20, y: 20, width: 520, height: 220)
+        label.autoresizingMask = [.width, .minYMargin]
+        container.addSubview(label)
 
         let quitBtn = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
         quitBtn.keyEquivalent = "q"
         quitBtn.keyEquivalentModifierMask = .command
-
-        let stack = NSStackView(views: [label, quitBtn])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 16
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = true
-        stack.autoresizingMask = [.width, .height]
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 280))
-        stack.frame = container.bounds
-        container.addSubview(stack)
+        quitBtn.frame = NSRect(x: 20, y: 250, width: 120, height: 32)
+        quitBtn.autoresizingMask = [.minYMargin]
+        container.addSubview(quitBtn)
 
         w.contentView = container
-        w.setContentSize(NSSize(width: 560, height: 300))
-        w.center()
+        w.setContentSize(NSSize(width: 560, height: 320))
+        positionWindowOnMainScreen(w)
 
         let del = DebugHostWindowDelegate {
             DebugLaunchSupport.window = nil
@@ -231,16 +233,35 @@ private enum DebugLaunchSupport {
         delegateRetain = del
         window = w
 
-        container.layoutSubtreeIfNeeded()
-
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
         w.makeKeyAndOrderFront(nil)
         w.orderFrontRegardless()
     }
+
+    private static func positionWindowOnMainScreen(_ w: NSWindow) {
+        guard let screen = NSScreen.main else {
+            w.center()
+            return
+        }
+        let sf = screen.visibleFrame
+        var frame = w.frame
+        frame.origin.x = sf.midX - frame.width * 0.5
+        frame.origin.y = sf.midY - frame.height * 0.5
+        w.setFrame(frame, display: true)
+    }
 }
 
-#endif
+/// AppKit default origin is bottom-left; simple top-down placement for subviews.
+private final class FlippedOriginView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+/// Some window server paths won’t surface a normal `NSWindow` as key; this matches panel behaviour.
+private final class KeyableHostWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
 
 // MARK: - ControllerManager Connection Callback
 
