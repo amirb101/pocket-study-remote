@@ -61,7 +61,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.updateConnectionState(isConnected: controllerManager.isConnected)
 
         Logger.detection.info("Pocket Study Remote launched")
+
+        #if DEBUG
+        // Debug: force something visible on screen — menu-only apps are easy to think “didn’t run”.
+        NSApp.activate(ignoringOtherApps: true)
+        showDebugLaunchAlert()
+        #endif
     }
+
+    #if DEBUG
+    private func showDebugLaunchAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Pocket Study Remote is running"
+        alert.informativeText = """
+        This dialog only appears in Debug builds.
+
+        The normal UI is the small game-controller icon in the menu bar (top-right). If the bar is full, open the « overflow next to the clock and look for the icon (tooltip: “Pocket Study Remote”).
+        """
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Open Accessibility Settings")
+        alert.alertStyle = .informational
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+    #endif
 
     func applicationWillTerminate(_ notification: Notification) {
         GCController.stopWirelessControllerDiscovery()

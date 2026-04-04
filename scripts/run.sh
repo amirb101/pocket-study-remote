@@ -18,6 +18,10 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO \
   build
 
+echo "→ Quitting any previous instance (stale process can fool pgrep)…"
+killall PocketStudyRemote 2>/dev/null || true
+sleep 0.3
+
 echo "→ Opening app (this terminal can close — the app is separate)…"
 open "$APP"
 
