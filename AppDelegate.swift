@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let registry: ModeRegistry
     private let overlay = OverlayWindow()
-    private let menuBar = MenuBarController()
+    /// Created on first use — must be after `NSApp.setActivationPolicy` (see `applicationDidFinishLaunching`).
+    private lazy var menuBar = MenuBarController()
     private let controllerManager = ControllerManager()
     private let appDetector = AppDetector()
     private let router: ActionRouter
@@ -45,12 +46,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu bar–only agent: no Dock, no app switcher entry — icon lives in the status area.
-        NSApp.setActivationPolicy(.accessory)
+        // Must run before creating `NSStatusItem` (see `menuBar`); otherwise the item can fail to appear.
+        if !NSApp.setActivationPolicy(.accessory) {
+            Logger.detection.error("setActivationPolicy(.accessory) failed — menu bar item may be missing")
+        }
 
         requestAccessibilityPermissionIfNeeded()
         wireComponents()
         controllerManager.startDiscovery()
         appDetector.emitCurrentApp()
+
+        // Lazily installs the status item now (after activation policy), and seeds UI if no delegate fired yet.
+        menuBar.updateCurrentMode(router.currentMode)
+        menuBar.updateConnectionState(isConnected: controllerManager.isConnected)
 
         Logger.detection.info("Pocket Study Remote launched")
     }
