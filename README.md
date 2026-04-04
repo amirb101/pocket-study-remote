@@ -41,21 +41,17 @@ Update `PRODUCT_BUNDLE_IDENTIFIER` in the target settings and `CFBundleIdentifie
 
 ---
 
-## Publishing to GitHub
+## Repository
 
-1. Create a new empty repository on GitHub (no README/license if you already have them locally).
-2. From this directory:
+Upstream: [github.com/amirb101/pocket-study-remote](https://github.com/amirb101/pocket-study-remote)
+
+To clone and build:
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit: Pocket Study Remote"
-git branch -M main
-git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
-git push -u origin main
+git clone https://github.com/amirb101/pocket-study-remote.git
+cd pocket-study-remote
+open PocketStudyRemote.xcodeproj
 ```
-
-Use SSH remotes if you prefer (`git@github.com:...`).
 
 ---
 
