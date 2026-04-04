@@ -23,7 +23,8 @@ final class MenuBarController {
     // MARK: - Initialisation
 
     init() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.isVisible = true
         configureButton()
     }
 
@@ -53,11 +54,19 @@ final class MenuBarController {
     private func configureButton() {
         guard let button = statusItem.button else { return }
         let symbolName = isControllerConnected ? "gamecontroller.fill" : "gamecontroller"
-        button.image = NSImage(
+        let image = NSImage(
             systemSymbolName: symbolName,
             accessibilityDescription: "Pocket Study Remote"
         )
-        button.image?.isTemplate = true  // renders correctly in both light and dark menu bars
+        button.image = image
+        if image != nil {
+            button.image?.isTemplate = true
+            button.title = ""
+        } else {
+            // SF Symbol missing (shouldn’t happen on macOS 13+) — still show something tappable.
+            button.title = " PSR "
+        }
+        button.toolTip = "Pocket Study Remote"
         button.action = #selector(statusItemClicked)
         button.target = self
     }

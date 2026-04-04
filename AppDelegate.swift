@@ -44,6 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Menu bar–only agent: no Dock, no app switcher entry — icon lives in the status area.
+        NSApp.setActivationPolicy(.accessory)
+
         requestAccessibilityPermissionIfNeeded()
         wireComponents()
         controllerManager.startDiscovery()
