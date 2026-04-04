@@ -21,14 +21,31 @@ xcodebuild \
 echo "→ Opening app (this terminal can close — the app is separate)…"
 open "$APP"
 
-echo "→ Waiting for process…"
-sleep 2
-if pgrep -lf PocketStudyRemote >/dev/null 2>&1; then
-  echo "→ Still running. Menu bar (top right): game-controller icon or “PSR”; full bar? Click « overflow. Tooltip: Pocket Study Remote."
+echo "→ Waiting for process (up to ~5s)…"
+running=""
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if pgrep -x PocketStudyRemote >/dev/null 2>&1; then
+    running=1
+    break
+  fi
+  sleep 0.5
+done
+
+if [[ -n "$running" ]]; then
+  echo "→ Still running as PID(s): $(pgrep -x PocketStudyRemote | tr '\n' ' ')"
+  echo "→ UI: menu bar top-right — game-controller icon or “PSR”; crowded bar? Click « overflow. Tooltip: Pocket Study Remote."
 else
-  echo "→ Process disappeared — likely a crash. Recent logs (if any):"
-  log show --style compact --predicate 'process == "PocketStudyRemote" OR eventMessage CONTAINS[c] "PocketStudyRemote"' --last 2m 2>/dev/null | tail -30 || true
-  echo "→ Also check: Console.app → Crash Reports, filter PocketStudyRemote."
+  echo "→ No process named PocketStudyRemote — it may have crashed on launch."
+  echo "→ Quick check: ps aux | grep -i PocketStudy"
+  shopt -s nullglob
+  crashes=(~/Library/Logs/DiagnosticReports/PocketStudyRemote*.ips)
+  if ((${#crashes[@]})); then
+    echo "→ Newest crash report(s):"
+    ls -lt "${crashes[@]}" 2>/dev/null | head -3
+  else
+    echo "→ No *.ips crash reports matching PocketStudyRemote in ~/Library/Logs/DiagnosticReports/"
+  fi
+  echo "→ Open Console.app → Crash Reports, or run the app from Xcode (⌘R) to see the debugger."
 fi
 echo "→ App: $APP"
 
