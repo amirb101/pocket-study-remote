@@ -18,13 +18,13 @@ Threading:
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
 from typing import Callable
 
 from ..constants import Controller
 from ..core.gamepad_button import GamepadButton
+from ..sdl_bootstrap import bootstrap_pygame_joystick, configure_sdl_env
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,9 @@ class ControllerManager:
 
     def start(self) -> None:
         """Start the background polling thread. Non-blocking."""
+        # macOS: SDL joystick enumeration + hidden display must run on the main thread
+        # (AppKit). ``on_launch`` calls us from rumps on that thread.
+        bootstrap_pygame_joystick()
         self._poll_thread = threading.Thread(
             target=self._run,
             daemon=True,
@@ -80,21 +83,22 @@ class ControllerManager:
         """
         Entry point for the poll thread.
 
-        Initialises pygame with a dummy video driver (no display needed),
-        then loops forever processing joystick events.
+        Main thread already ran :func:`bootstrap_pygame_joystick` (hidden display on macOS).
+        This thread only pumps events.
         """
-        # Prevent pygame from creating a window or grabbing audio.
-        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-        os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+        configure_sdl_env()
+        import pygame
 
-        import pygame  # imported here so the dummy env vars are set first
-
-        pygame.init()
+        if not pygame.get_init():
+            pygame.init()
         pygame.joystick.init()
 
         joystick: pygame.joystick.JoystickType | None = None
 
-        logger.info("ControllerManager: pygame initialised, waiting for controller…")
+        logger.info(
+            "ControllerManager: poll loop ready (joystick count=%d)",
+            pygame.joystick.get_count(),
+        )
 
         while True:
             # -- Controller connect / disconnect ---------------------------
@@ -112,11 +116,8 @@ class ControllerManager:
                 if now - self._last_no_joystick_log >= 12.0:
                     self._last_no_joystick_log = now
                     logger.warning(
-                        "Pygame still sees 0 joysticks. The macOS label (PS4 / Xbox / 8BitDo) does not decide "
-                        "this — SDL must expose the device. Try: quit Steam; "
-                        "System Settings → Privacy & Security → Input Monitoring → enable Terminal or Python; "
-                        "re-pair the controller; or run with "
-                        "SDL_JOYSTICK_HIDAPI=0 ./scripts/run.sh (or =1). "
+                        "Pygame still sees 0 joysticks. Try: quit Steam; enable Input Monitoring for "
+                        "Terminal/Python; re-pair the controller; SDL_JOYSTICK_HIDAPI=0 or =1. "
                         "Diagnostic: python -m pocket_study_remote.tools.button_logger"
                     )
 

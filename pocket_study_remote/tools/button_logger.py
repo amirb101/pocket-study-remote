@@ -2,24 +2,24 @@
 Button logger — prints every raw pygame joystick event to the terminal.
 
 Run this first to verify the 8BitDo Micro's button indices on your machine,
-then update constants.py → Controller.ButtonIndex to match.
+then update ``pocket_study_remote/constants.py`` → ``Controller.ButtonIndex``.
+
+Uses the same SDL bootstrap as the main app (no dummy video driver on macOS).
 
 Usage:
     python -m pocket_study_remote.tools.button_logger
 """
 
-import os
+from __future__ import annotations
+
 import sys
-
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-
-import pygame
 
 
 def main() -> None:
-    pygame.init()
-    pygame.joystick.init()
+    from pocket_study_remote.sdl_bootstrap import bootstrap_pygame_joystick
+
+    bootstrap_pygame_joystick()
+    import pygame
 
     print("Waiting for a controller… (press Ctrl+C to quit)\n")
 
@@ -49,10 +49,10 @@ def main() -> None:
             elif event.type == pygame.JOYHATMOTION:
                 print(f"  HAT MOTION   value={event.value}")
             elif event.type == pygame.JOYAXISMOTION:
-                if abs(event.value) > 0.1:   # ignore tiny drift
+                if abs(event.value) > 0.1:  # ignore tiny drift
                     print(f"  AXIS MOTION  axis={event.axis}  value={event.value:.3f}")
 
-        pygame.time.wait(16)   # ~60 Hz
+        pygame.time.wait(16)  # ~60 Hz
 
 
 if __name__ == "__main__":
