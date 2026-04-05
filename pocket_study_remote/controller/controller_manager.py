@@ -52,6 +52,7 @@ class ControllerManager:
         self._on_button_change = on_button_change
         self._connected = False
         self._poll_thread: threading.Thread | None = None
+        self._last_no_joystick_log = 0.0
 
     # ------------------------------------------------------------------
     # Public interface
@@ -102,7 +103,22 @@ class ControllerManager:
                 joystick = pygame.joystick.Joystick(0)
                 joystick.init()
                 self._connected = True
-                logger.info("Controller connected: %s", joystick.get_name())
+                # macOS often shows "Wireless Controller" / "DUALSHOCK 4" / "8BitDo …" — all are fine here.
+                logger.info("Controller connected (pygame/SDL): %s", joystick.get_name())
+
+            elif count == 0 and joystick is None:
+                # pygame only sees what SDL enumerates; Bluetooth + dummy video can be finicky on macOS.
+                now = time.monotonic()
+                if now - self._last_no_joystick_log >= 12.0:
+                    self._last_no_joystick_log = now
+                    logger.warning(
+                        "Pygame still sees 0 joysticks. The macOS label (PS4 / Xbox / 8BitDo) does not decide "
+                        "this — SDL must expose the device. Try: quit Steam; "
+                        "System Settings → Privacy & Security → Input Monitoring → enable Terminal or Python; "
+                        "re-pair the controller; or run with "
+                        "SDL_JOYSTICK_HIDAPI=0 ./scripts/run.sh (or =1). "
+                        "Diagnostic: python -m pocket_study_remote.tools.button_logger"
+                    )
 
             elif count == 0 and joystick is not None:
                 joystick = None
