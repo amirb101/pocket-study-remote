@@ -13,6 +13,7 @@ then clears back to just the icon.  Simple, zero extra dependencies.
 from __future__ import annotations
 
 import logging
+import subprocess
 
 import rumps  # type: ignore[import]
 
@@ -69,9 +70,6 @@ class MenuBarApp(rumps.App):
     # rumps lifecycle
     # ------------------------------------------------------------------
 
-    @rumps.clicked("__launch__")   # placeholder — not a real menu item
-    def _unused(self, _): pass
-
     def application_did_finish_launching(self, notification) -> None:
         """Called by rumps after the AppKit run loop starts."""
         self._on_launch()
@@ -114,10 +112,25 @@ class MenuBarApp(rumps.App):
 
         self.menu.clear()
         self.menu = [
-            rumps.MenuItem("Pocket Study Remote", callback=None),
-            None,  # separator
+            rumps.MenuItem("Pocket Study Remote (menu bar only — no window)", callback=None),
+            None,
             rumps.MenuItem(f"Mode: {self._current_mode}", callback=None),
             rumps.MenuItem(connection_label, callback=None),
             None,
+            rumps.MenuItem(
+                "Open Accessibility Settings…",
+                callback=self._open_accessibility_settings,
+            ),
+            None,
             rumps.MenuItem("Quit", callback=rumps.quit_application),
         ]
+
+    def _open_accessibility_settings(self, _) -> None:
+        """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""
+        subprocess.run(
+            [
+                "open",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+            ],
+            check=False,
+        )

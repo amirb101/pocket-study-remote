@@ -3,6 +3,8 @@
 A context-aware macOS menu bar app that turns an **8BitDo Micro** gamepad into a
 study and life remote. Auto-detects the frontmost app and switches button mappings.
 
+There is **no main document window** — only the menu bar icon (and the Dock tile while Terminal runs `run.sh`). Background threads start automatically at launch; you do not need to click anything to “start” the app.
+
 ## Modes
 
 | Mode | Active when | Primary use |
