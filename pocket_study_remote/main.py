@@ -12,14 +12,19 @@ Component graph
 main.py
 ├── ModeRegistry        — maps bundle IDs → modes
 ├── ActionRouter        — button + app-change → action dispatch
-├── ControllerManager   — pygame gamepad polling (background thread)
+├── Controller backend  — macOS: GameController; else pygame (background thread)
 ├── AppDetector         — NSWorkspace polling (background thread)
 └── MenuBarApp          — rumps status bar + AppKit run loop (main thread)
 """
 
+from __future__ import annotations
+
 import logging
+import os
+import sys
 import threading
 import time
+from typing import Callable, Protocol
 
 from .constants import BundleID
 from .controller.controller_manager import ControllerManager
@@ -52,15 +57,45 @@ logger = logging.getLogger(__name__)
 
 def _check_accessibility() -> None:
     """Warn early if Accessibility permission is missing."""
+    exe = os.path.realpath(sys.executable)
+    logger.info("Accessibility: add this binary if keystrokes fail → %s", exe)
     try:
         from ApplicationServices import AXIsProcessTrusted  # type: ignore[import]
         if not AXIsProcessTrusted():
             logger.warning(
                 "Accessibility permission not granted — keystrokes will not fire.\n"
-                "Fix: System Settings → Privacy & Security → Accessibility → add this app."
+                "System Settings → Privacy & Security → Accessibility → + → choose:\n"
+                "  %s\n"
+                "(For a venv, that is usually .venv/bin/python3 after realpath.)",
+                exe,
             )
     except ImportError:
         pass
+
+
+class _ControllerBackend(Protocol):
+    @property
+    def is_connected(self) -> bool: ...
+
+    def start(self) -> None: ...
+
+
+def _make_controller(router: ActionRouter) -> _ControllerBackend:
+    """
+    On macOS, prefer Apple's GameController API so Bluetooth pads work without SDL.
+    Fall back to pygame if PyObjC or the framework is unavailable.
+    """
+    if sys.platform == "darwin":
+        try:
+            from .controller.apple_gc_input import AppleGCControllerInput
+
+            return AppleGCControllerInput(on_button_change=router.button_changed)
+        except Exception as e:
+            logger.warning(
+                "GameController backend unavailable (%s); falling back to pygame/SDL",
+                e,
+            )
+    return ControllerManager(on_button_change=router.button_changed)
 
 
 # ---------------------------------------------------------------------------
@@ -88,11 +123,11 @@ def _build_registry() -> ModeRegistry:
 # ---------------------------------------------------------------------------
 
 def _start_connection_watcher(
-    controller: ControllerManager,
-    on_change: "Callable[[bool], None]",  # noqa: F821
+    controller: _ControllerBackend,
+    on_change: Callable[[bool], None],
 ) -> None:
     """
-    Polls ControllerManager.is_connected once per second and fires
+    Polls controller.is_connected once per second and fires
     ``on_change`` whenever the state flips.
     """
     def _watch() -> None:
@@ -116,7 +151,7 @@ def main() -> None:
 
     registry   = _build_registry()
     router     = ActionRouter(registry=registry)
-    controller = ControllerManager(on_button_change=router.button_changed)
+    controller = _make_controller(router)
     detector   = AppDetector(on_app_change=router.update_mode)
 
     def on_launch() -> None:

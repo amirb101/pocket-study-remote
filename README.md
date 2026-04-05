@@ -37,12 +37,26 @@ pip install -r requirements.txt
 ### 3. Accessibility permission
 
 The app sends keyboard shortcuts via the Core Graphics event system, which
-requires Accessibility access:
+requires **Accessibility** access. There is no `.app` bundle: macOS grants
+permission to the **exact program binary** that is running (the Python
+interpreter).
 
-System Settings → Privacy & Security → Accessibility → add Terminal (or your
-Python interpreter) → toggle on.
+1. Start the app once from the same way you always run it (e.g. `./scripts/run.sh`
+   or `python -m pocket_study_remote` inside your venv).
+2. Read the startup log line: `Accessibility: add this binary if keystrokes fail → …`
+3. **System Settings → Privacy & Security → Accessibility →** list **+** (add).
+4. Press **⌘⇧G** in the file picker and paste the path from the log, or navigate
+   to your venv’s interpreter, e.g.  
+   `…/controller/.venv/bin/python3`  
+   (use `realpath .venv/bin/python3` or `./scripts/print-accessibility-path.sh`
+   if you are unsure).
 
-You only do this once. The app logs a warning on startup if it's missing.
+If you run from **Cursor’s integrated terminal**, you may need that interpreter
+on the list (not only “Terminal”). Remove duplicate or stale entries that point
+at old venv paths after recreating `.venv`.
+
+You only do this once per interpreter path. The app logs a warning on startup
+if permission is still missing.
 
 ### 4. Run
 
@@ -69,11 +83,11 @@ python -m pocket_study_remote.tools.button_logger
 Press every button and note the index printed for each. If anything differs
 from the defaults, update `pocket_study_remote/constants.py` → `Controller.ButtonIndex`.
 
-The main menu bar app cannot open an SDL/Cocoa window (it would conflict with
-rumps’ `NSApplication` and crash on recent macOS). It uses SDL “dummy” video, so
-if the menu still says “Not connected” but `button_logger` sees your pad, SDL
-enumeration in the embedded case is the limiting factor — open an issue or we
-can add a GameController-based reader later.
+The menu bar app uses **Apple GameController** on macOS for the pad (no SDL
+window). If you still see “Not connected”, confirm the controller appears under
+**System Settings → Game Controllers**, try re-pairing, and check DEBUG logs for
+`GameController connected`. The separate `button_logger` tool still uses pygame
+for diagnostics.
 
 ---
 

@@ -17,3 +17,4 @@ pygame>=2.5.0
 pyobjc-framework-Cocoa>=9.0
 pyobjc-framework-Quartz>=9.0
 pyobjc-framework-ApplicationServices>=9.0
+pyobjc-framework-GameController>=9.0
