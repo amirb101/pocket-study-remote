@@ -1,0 +1,138 @@
+"""
+Pocket Study Remote — entry point and dependency wiring.
+
+Run with:
+    python -m pocket_study_remote
+
+This file creates every component, wires them together via callbacks,
+and hands control to the rumps run loop (which owns the AppKit main thread).
+
+Component graph
+───────────────
+main.py
+├── ModeRegistry        — maps bundle IDs → modes
+├── ActionRouter        — button + app-change → action dispatch
+├── ControllerManager   — pygame gamepad polling (background thread)
+├── AppDetector         — NSWorkspace polling (background thread)
+└── MenuBarApp          — rumps status bar + AppKit run loop (main thread)
+"""
+
+import logging
+import threading
+import time
+
+from .constants import BundleID
+from .controller.controller_manager import ControllerManager
+from .core.mode_registry import ModeRegistry
+from .detection.app_detector import AppDetector
+from .modes.browser_mode import BrowserMode
+from .modes.global_mode import GlobalMode
+from .modes.obsidian_mode import ObsidianMode
+from .modes.spotify_mode import SpotifyMode
+from .routing.action_router import ActionRouter
+from .ui.menu_bar import MenuBarApp
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+logging.getLogger("pygame").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Accessibility check
+# ---------------------------------------------------------------------------
+
+def _check_accessibility() -> None:
+    """Warn early if Accessibility permission is missing."""
+    try:
+        from ApplicationServices import AXIsProcessTrusted  # type: ignore[import]
+        if not AXIsProcessTrusted():
+            logger.warning(
+                "Accessibility permission not granted — keystrokes will not fire.\n"
+                "Fix: System Settings → Privacy & Security → Accessibility → add this app."
+            )
+    except ImportError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+def _build_registry() -> ModeRegistry:
+    """
+    Populate the mode registry.
+
+    To add a new mode:
+    1. Create a new AppMode subclass in modes/
+    2. Add its bundle ID(s) to constants.py
+    3. Add one register() call here — nothing else changes.
+    """
+    registry = ModeRegistry(fallback=GlobalMode())
+    registry.register(SpotifyMode(),  bundle_ids=[BundleID.SPOTIFY])
+    registry.register(BrowserMode(),  bundle_ids=BundleID.CHROMIUM_BROWSERS)
+    registry.register(ObsidianMode(), bundle_ids=[BundleID.OBSIDIAN])
+    return registry
+
+
+# ---------------------------------------------------------------------------
+# Connection watcher
+# ---------------------------------------------------------------------------
+
+def _start_connection_watcher(
+    controller: ControllerManager,
+    on_change: "Callable[[bool], None]",  # noqa: F821
+) -> None:
+    """
+    Polls ControllerManager.is_connected once per second and fires
+    ``on_change`` whenever the state flips.
+    """
+    def _watch() -> None:
+        last_state: bool | None = None
+        while True:
+            current = controller.is_connected
+            if current != last_state:
+                on_change(current)
+                last_state = current
+            time.sleep(1.0)
+
+    threading.Thread(target=_watch, daemon=True, name="ConnectionWatcher").start()
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    _check_accessibility()
+
+    registry   = _build_registry()
+    router     = ActionRouter(registry=registry)
+    controller = ControllerManager(on_button_change=router.button_changed)
+    detector   = AppDetector(on_app_change=router.update_mode)
+
+    def on_launch() -> None:
+        """Called by rumps after the AppKit run loop starts."""
+        controller.start()
+        detector.start()
+        _start_connection_watcher(controller, app.update_connection)
+        logger.info("Pocket Study Remote is running")
+
+    app = MenuBarApp(on_launch=on_launch)
+
+    # Wire mode-change callback now that app exists.
+    router._on_mode_changed = app.update_mode
+
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,102 +1,78 @@
-# Pocket Study Remote
+# Pocket Study Remote (Python)
 
-A context-aware macOS menu bar app that turns an **8BitDo Micro** gamepad into a personalised study and life remote. It auto-detects the frontmost app and switches button mappings accordingly.
+A context-aware macOS menu bar app that turns an **8BitDo Micro** gamepad into a
+study and life remote. Auto-detects the frontmost app and switches button mappings.
 
 ## Modes
 
 | Mode | Active when | Primary use |
 |---|---|---|
 | **Spotify** | Spotify is frontmost | Play/pause, next/prev, seek, volume, shuffle |
-| **Browser** | Comet / Chrome / Arc / Edge is frontmost | Tab navigation, back/forward, new tab, bookmark combo |
+| **Browser** | Comet / Chrome / Arc / Edge | Tab navigation, back/forward, new tab, bookmark combo |
 | **Obsidian** | Obsidian is frontmost | Daily note, checklist, command palette, note history |
-| **Global** | Anything else | Music controls, volume, screenshots, open apps |
-
-A toast overlay appears for ~1.5 seconds whenever the mode changes.
+| **Global** | Anything else | Music, volume, screenshots, Space switching, open apps |
 
 ---
 
-## Requirements
+## Setup
 
-- macOS 13 Ventura or later
-- Xcode 15 or later (Swift 5.9)
-- 8BitDo Micro with physical switch set to **D** (Direct Input mode)
+### 1. Controller
 
----
+Set the physical switch on the bottom of the 8BitDo Micro to **D** (Direct Input).
+Pair via Bluetooth: hold the pairing button until the lights flash, then add in
+macOS System Settings → Bluetooth.
 
-## Build and run
-
-1. Open `PocketStudyRemote.xcodeproj` in Xcode.
-2. Select the **PocketStudyRemote** scheme and your Mac, then **⌘R**.
-3. In **Signing & Capabilities**, choose your **Team** if automatic signing complains (or build with ad-hoc signing for local testing).
-4. Ensure **App Sandbox** is off for this target (the project is configured with `ENABLE_APP_SANDBOX = NO`). Accessibility and `CGEventPost` require it.
-5. On first run, grant **Accessibility** when prompted (System Settings → Privacy & Security → Accessibility).
-
-**CLI: build + open in one step** (unsigned Debug build into `build/RunDerived`):
+### 2. Python environment
 
 ```bash
-./scripts/run.sh
+# Recommended: use a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
 ```
 
-There is **no Dock icon** — look for the **game-controller** symbol in the **menu bar** (right). On a full menu bar, open the **«** overflow; hover until the tooltip **Pocket Study Remote** appears.
+### 3. Accessibility permission
 
-**Debug builds** use `Resources/Info-Debug.plist` (`LSUIElement = false`): you get a **Dock icon**, a **host window** shortly after launch, and `setActivationPolicy(.regular)`. The app decides this from the **embedded** `LSUIElement` value (not only the Swift `DEBUG` flag), so it matches what Xcode/`xcodebuild` actually bundled. If the window doesn’t appear, confirm the build log shows `ProcessInfoPlistFile … Info-Debug.plist` (not `Info.plist` alone). Running the executable from Terminal shows `PocketStudyRemote: showHostWindow …` on stderr when that code runs.
+The app sends keyboard shortcuts via the Core Graphics event system, which
+requires Accessibility access:
 
-Raw `xcodebuild` only compiles; it does **not** launch the app unless you also `open …/PocketStudyRemote.app` or use the script above.
+System Settings → Privacy & Security → Accessibility → add Terminal (or your
+Python interpreter) → toggle on.
 
-Command-line build only (unsigned, e.g. for CI):
+You only do this once. The app logs a warning on startup if it's missing.
+
+### 4. Run
 
 ```bash
-xcodebuild -project PocketStudyRemote.xcodeproj -scheme PocketStudyRemote -configuration Debug -derivedDataPath build/RunDerived CODE_SIGNING_ALLOWED=NO build
+# From the repository root:
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python -m pocket_study_remote
 ```
 
-Update `PRODUCT_BUNDLE_IDENTIFIER` in the target settings and `CFBundleIdentifier` in `Resources/Info.plist` before shipping.
+Or use `./scripts/run.sh` (creates `.venv`, installs deps, runs the app).
 
 ---
 
-## Repository
+## Verify button mapping
 
-Upstream: [github.com/amirb101/pocket-study-remote](https://github.com/amirb101/pocket-study-remote)
-
-To clone and build:
+The 8BitDo Micro's button indices in D mode can vary slightly between firmware
+versions. Before running the main app, confirm the mapping on your unit:
 
 ```bash
-git clone https://github.com/amirb101/pocket-study-remote.git
-cd pocket-study-remote
-open PocketStudyRemote.xcodeproj
+python -m pocket_study_remote.tools.button_logger
 ```
+
+Press every button and note the index printed for each. If anything differs
+from the defaults, update `pocket_study_remote/constants.py` → `Controller.ButtonIndex`.
 
 ---
 
-## Confirming Comet's Bundle ID
+## Obsidian hotkey setup
 
-The app assumes `ai.perplexity.comet` for Comet browser. Confirm this on the target Mac:
-
-```bash
-mdls -name kMDItemCFBundleIdentifier /Applications/Comet.app
-```
-
-Update `Constants.BundleID.cometBrowser` in `Constants.swift` if it differs.
-
----
-
-## Adding a New Mode
-
-1. Create `Modes/WordMode.swift` (or whatever app you're targeting)
-2. Make it conform to `AppMode`
-3. Add its bundle ID to `Constants.BundleID`
-4. Register it in `AppDelegate.buildRegistry()`:
-
-```swift
-registry.register(WordMode(), for: [Constants.BundleID.word])
-```
-
-That's it. No other files need to change.
-
----
-
-## Obsidian Setup
-
-Open Obsidian → Settings → Hotkeys, search for each command, and assign:
+The Obsidian mode fires custom hotkeys. Open Obsidian → Settings → Hotkeys
+and assign:
 
 | Command | Shortcut |
 |---|---|
@@ -105,77 +81,92 @@ Open Obsidian → Settings → Hotkeys, search for each command, and assign:
 | Insert template | `Ctrl+Shift+T` |
 | Open graph view | `Ctrl+Shift+G` |
 
-The remaining shortcuts (Command palette, Quick switcher, Navigate back/forward, Toggle sidebar, Search) use Obsidian's defaults and need no changes.
+The remaining buttons use Obsidian's defaults (Cmd+P, Cmd+O, Cmd+N, etc.).
 
 ---
 
-## Controller Setup
+## Confirm Comet's bundle ID
 
-1. Set the physical switch on the bottom of the 8BitDo Micro to **D**
-2. Hold the pairing button until the lights flash
-3. Open macOS System Settings → Bluetooth → pair the device
-4. Open the app → grant Accessibility permission → done
-
----
-
-## Project Structure
-
-```
-PocketStudyRemote/
-├── AppDelegate.swift          — entry point, dependency wiring
-├── Constants.swift            — all magic numbers and bundle IDs
-├── Core/
-│   ├── Action.swift           — Action value type and factory methods
-│   ├── AppMode.swift          — AppMode protocol
-│   ├── ButtonCombo.swift      — multi-button combo type
-│   ├── GamepadButton.swift    — typed button enum
-│   ├── KeyCode.swift          — typed CGKeyCode enum
-│   ├── Logging.swift          — shared os.Logger instances
-│   └── ModeRegistry.swift     — bundle ID → mode resolution
-├── Controller/
-│   └── ControllerManager.swift — GameController framework wrapper
-├── Detection/
-│   └── AppDetector.swift       — NSWorkspace frontmost app observer
-├── Executors/
-│   ├── AppleScriptExecutor.swift — async AppleScript runner + Spotify/System namespaces
-│   └── KeystrokeExecutor.swift   — CGEventPost wrapper
-├── Modes/
-│   ├── BrowserMode.swift
-│   ├── GlobalMode.swift
-│   ├── ObsidianMode.swift
-│   └── SpotifyMode.swift
-├── Routing/
-│   └── ActionRouter.swift     — button dispatch + combo detection + mode switching
-├── UI/
-│   ├── MenuBarController.swift — status item, menu, launch-at-login
-│   └── OverlayWindow.swift    — animated mode-change toast
-└── Resources/
-    └── Info.plist
+```bash
+mdls -name kMDItemCFBundleIdentifier /Applications/Comet.app
 ```
 
----
-
-## V2 Backlog
-
-- **Word mode** — Cmd+S, comment, undo/redo, track changes
-- **Photo Booth mode** — capture shortcut (must test on target Mac)
-- **FaceTime mode** — mute, full screen; Live Photo likely needs AX API tree walking
-- **Preferences window** — drag-and-drop button remapping per mode
-- **Long press** — hold A for 500ms → different action than tap
-- **Import/export profiles** — share button maps as JSON
+Update `constants.py → BundleID.COMET` if it differs from `ai.perplexity.comet`.
 
 ---
 
-## Architecture Notes
+## Project structure
 
-**Why `Action` is a value type with a closure, not a protocol:**
-Modes define tens of actions inline. A struct with a `perform: () -> Void` closure reads naturally as a dictionary literal and requires no boilerplate. Protocol conformance adds nothing here.
+```
+pocket_study_remote/
+├── __init__.py
+├── main.py                     — entry point, dependency wiring
+├── constants.py                — all magic numbers and bundle IDs
+├── requirements.txt
+├── core/
+│   ├── action.py               — Action dataclass + factory functions
+│   ├── app_mode.py             — AppMode abstract base class
+│   ├── button_combo.py         — ButtonCombo frozen dataclass
+│   ├── gamepad_button.py       — GamepadButton enum
+│   └── mode_registry.py        — bundle ID → mode resolution
+├── controller/
+│   └── controller_manager.py   — pygame gamepad polling (background thread)
+├── detection/
+│   └── app_detector.py         — NSWorkspace polling (background thread)
+├── routing/
+│   └── action_router.py        — combo detection + action dispatch
+├── executors/
+│   ├── applescript_executor.py — subprocess osascript, async queue
+│   └── keystroke_executor.py   — CGEventPost via PyObjC Quartz
+├── modes/
+│   ├── global_mode.py
+│   ├── spotify_mode.py
+│   ├── browser_mode.py
+│   └── obsidian_mode.py
+├── ui/
+│   └── menu_bar.py             — rumps MenuBarApp
+└── tools/
+    └── button_logger.py        — debug tool: prints raw joystick events
+```
 
-**Why `AppMode` *is* a protocol:**
-Adding a new mode should require creating one new file and one new line in `AppDelegate`. A protocol makes that possible — anything that conforms is immediately usable by `ModeRegistry` and `ActionRouter` without changes to either.
+---
 
-**Why AppleScript runs on a serial background queue:**
-AppleScript can block for 200–800ms. A serial queue (not concurrent) ensures volume-adjustment scripts don't pile up and overshoot — each one waits for the previous before running.
+## Adding a new mode
 
-**Why `CGEventPost` rather than `AXUIElement` for keyboard shortcuts:**
-`CGEventPost` is simpler, well-documented, and sufficient for everything in the current mode set. `AXUIElement` is reserved for cases where there is no keyboard shortcut equivalent (e.g. clicking a specific button in FaceTime's UI), which is a V2 concern.
+1. Create `modes/word_mode.py` — subclass `AppMode`, define `button_map`
+2. Add the bundle ID to `constants.py → BundleID`
+3. Add one line in `main.py → _build_registry()`:
+   ```python
+   registry.register(WordMode(), bundle_ids=[BundleID.WORD])
+   ```
+
+Nothing else changes.
+
+---
+
+## V2 backlog
+
+- Word mode (all keyboard shortcuts — low complexity, just deprioritised)
+- Photo Booth shutter (test the shortcut on the target Mac first)
+- FaceTime live photo (likely needs PyObjC AX tree walking)
+- Preferences window (per-mode remapping, saved to JSON)
+- Long press support (hold A for 500ms → different action)
+- LaunchAgent plist for proper launch-at-login without Terminal
+
+---
+
+## Architecture notes
+
+**Why `subprocess osascript` instead of `NSAppleScript` via PyObjC?**
+Simpler, more debuggable, and identical in effect. `osascript` is a stable
+macOS CLI tool with no binding surprises.
+
+**Why poll instead of NSWorkspace notifications for app detection?**
+NSWorkspace notifications require the AppKit run loop. That loop is owned by
+the rumps main thread. Polling from a separate daemon thread at 0.5 s
+avoids any entanglement and is imperceptible to the user.
+
+**Why pygame for gamepad input instead of PyObjC GameController?**
+pygame's joystick API is simpler, better documented in Python, and handles
+D mode HID devices reliably. The `SDL_VIDEODRIVER=dummy` trick prevents it
+from needing a display.

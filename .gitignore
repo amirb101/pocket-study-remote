@@ -1,14 +1,24 @@
-# Xcode / Swift
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Legacy Xcode / Swift (if any stray files remain)
 build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
 *.moved-aside
 *.hmap
+.swiftpm/
+Packages/
 
 # macOS
 .DS_Store
-
-# SPM (if added later)
-.swiftpm/
-Packages/

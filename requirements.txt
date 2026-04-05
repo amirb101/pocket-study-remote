@@ -1,0 +1,21 @@
+# Pocket Study Remote — Python dependencies
+#
+# Install with:
+#   pip install -r requirements.txt --break-system-packages
+#
+# Or in a venv (recommended):
+#   python3 -m venv .venv
+#   source .venv/bin/activate
+#   pip install -r requirements.txt
+
+# Menu bar app framework (AppKit run loop wrapper)
+rumps>=0.4.0
+
+# Gamepad / joystick input
+pygame>=2.5.0
+
+# macOS system frameworks (AppKit, Quartz, ApplicationServices)
+# These give us NSWorkspace, CGEventPost, and AXIsProcessTrusted.
+pyobjc-framework-AppKit>=10.0
+pyobjc-framework-Quartz>=10.0
+pyobjc-framework-ApplicationServices>=10.0

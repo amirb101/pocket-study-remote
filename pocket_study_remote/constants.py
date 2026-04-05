@@ -1,0 +1,121 @@
+"""
+All app-wide constants live here.
+
+Nothing elsewhere in the codebase should contain a raw number or
+bundle-ID string — if it isn't obvious at the call site, it belongs
+here with a comment explaining it.
+"""
+
+from dataclasses import dataclass
+
+
+# ---------------------------------------------------------------------------
+# Overlay / status bar
+# ---------------------------------------------------------------------------
+
+class Overlay:
+    """Timing for the mode-change status bar flash."""
+    HOLD_SECONDS: float = 2.0          # how long the mode label stays visible
+
+
+# ---------------------------------------------------------------------------
+# Controller
+# ---------------------------------------------------------------------------
+
+class Controller:
+    """Pygame joystick behaviour."""
+
+    # Minimum axis value (0–1) to count a trigger as "pressed".
+    TRIGGER_PRESS_THRESHOLD: float = 0.5
+
+    # How often (seconds) to poll the pygame event queue.
+    POLL_INTERVAL_SECONDS: float = 0.016   # ~60 Hz
+
+    # ---------------------------------------------------------------------------
+    # 8BitDo Micro button indices in D-input mode (pygame joystick)
+    #
+    # These were determined empirically. If buttons feel wrong on your unit,
+    # run `python -m pocket_study_remote.tools.button_logger` (see tools/)
+    # to print every raw event and remap here.
+    # ---------------------------------------------------------------------------
+    class ButtonIndex:
+        A      = 0
+        B      = 1
+        X      = 3
+        Y      = 4
+        L1     = 6
+        R1     = 7
+        L2     = 8   # may arrive as axis on some firmware — see ControllerManager
+        R2     = 9
+        SELECT = 10
+        START  = 11
+
+    # D-pad arrives as a pygame "hat" event. Hat value → direction name.
+    # Hat tuples are (x, y) where x: -1=left, 1=right; y: -1=down, 1=up.
+    class HatDirection:
+        UP    = (0,  1)
+        DOWN  = (0, -1)
+        LEFT  = (-1, 0)
+        RIGHT = (1,  0)
+
+    # Axis index for analogue triggers (if the firmware uses axes not buttons).
+    class AxisIndex:
+        LEFT_TRIGGER  = 4
+        RIGHT_TRIGGER = 5
+
+
+# ---------------------------------------------------------------------------
+# App detection polling
+# ---------------------------------------------------------------------------
+
+class Detection:
+    # How often (seconds) to check the frontmost application.
+    # 0.5 s is imperceptible to the user and light on CPU.
+    POLL_INTERVAL_SECONDS: float = 0.5
+
+
+# ---------------------------------------------------------------------------
+# Spotify
+# ---------------------------------------------------------------------------
+
+class Spotify:
+    VOLUME_STEP: int    = 10    # points per press (Spotify's 0–100 scale)
+    SEEK_STEP_SECONDS: float = 15.0
+
+
+# ---------------------------------------------------------------------------
+# System volume
+# ---------------------------------------------------------------------------
+
+class Volume:
+    STEP_SIZE: int = 10   # points per press (system 0–100 scale)
+
+
+# ---------------------------------------------------------------------------
+# Bundle identifiers
+# ---------------------------------------------------------------------------
+
+class BundleID:
+    """
+    CFBundleIdentifier strings for every app the app cares about.
+
+    ⚠  Comet browser: verify on the target Mac before shipping:
+        mdls -name kMDItemCFBundleIdentifier /Applications/Comet.app
+    """
+    SPOTIFY  = "com.spotify.client"
+    OBSIDIAN = "md.obsidian"
+
+    # Chromium-family browsers (all share identical keyboard shortcuts)
+    CHROME  = "com.google.Chrome"
+    ARC     = "company.thebrowser.Browser"
+    EDGE    = "com.microsoft.Edge"
+    BRAVE   = "com.brave.Browser"
+    COMET   = "ai.perplexity.comet"   # ← confirm with mdls command above
+
+    CHROMIUM_BROWSERS: list[str] = [
+        CHROME,
+        ARC,
+        EDGE,
+        BRAVE,
+        COMET,
+    ]
