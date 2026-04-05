@@ -24,7 +24,7 @@ from typing import Callable
 
 from ..constants import Controller
 from ..core.gamepad_button import GamepadButton
-from ..sdl_bootstrap import bootstrap_pygame_joystick, configure_sdl_env
+from ..sdl_bootstrap import bootstrap_pygame_for_menu_bar_app, configure_sdl_env
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,8 @@ class ControllerManager:
 
     def start(self) -> None:
         """Start the background polling thread. Non-blocking."""
-        # macOS: SDL joystick enumeration + hidden display must run on the main thread
-        # (AppKit). ``on_launch`` calls us from rumps on that thread.
-        bootstrap_pygame_joystick()
+        # Main thread (rumps). Never use pygame.display here — SDL Cocoa + rumps aborts on macOS 26+.
+        bootstrap_pygame_for_menu_bar_app()
         self._poll_thread = threading.Thread(
             target=self._run,
             daemon=True,
@@ -83,10 +82,9 @@ class ControllerManager:
         """
         Entry point for the poll thread.
 
-        Main thread already ran :func:`bootstrap_pygame_joystick` (hidden display on macOS).
-        This thread only pumps events.
+        Main thread already ran :func:`bootstrap_pygame_for_menu_bar_app` (dummy SDL video with rumps).
         """
-        configure_sdl_env()
+        configure_sdl_env(embedded_with_rumps=True)
         import pygame
 
         if not pygame.get_init():

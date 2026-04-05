@@ -1,13 +1,19 @@
 """
 SDL / pygame setup for joystick access on macOS.
 
-``SDL_VIDEODRIVER=dummy`` (common for headless pygame) often yields **zero**
-joysticks on macOS with SDL2. We skip dummy video on Darwin and open a 1×1
-hidden window so the Cocoa path can see Bluetooth/USB gamepads.
+**rumps + SDL Cocoa video = crash:** SDL's ``Cocoa_RegisterApp`` calls
+``[NSApplication sharedApplication]`` and registers the process with HIServices.
+The menu bar app already owns NSApplication, so ``pygame.display.set_mode`` on
+the main thread aborts on recent macOS (e.g. Tahoe 26.x) with
+``_RegisterApplication`` / ``SIGABRT``.
 
-``pygame.display`` must be touched from the **main thread** on macOS; the
-rumps/AppKit run loop calls :func:`bootstrap_pygame_joystick` before the
-controller poll thread starts.
+**Menu bar process:** use ``SDL_VIDEODRIVER=dummy`` and never open an SDL
+window. Joysticks may still appear if SDL's HIDAPI path works (depends on OS /
+SDL build).
+
+**Standalone CLI** (e.g. ``button_logger``): no rumps, so we *may* use a 1×1
+hidden window on Darwin to help SDL enumerate devices — still from the main
+thread, but only when not sharing the process with AppKit.
 """
 
 from __future__ import annotations
@@ -18,31 +24,65 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-_done = False
+_bootstrapped_menu_bar = False
+_bootstrapped_standalone = False
 
 
-def configure_sdl_env() -> None:
-    """Call before ``import pygame`` (any thread)."""
+def configure_sdl_env(*, embedded_with_rumps: bool) -> None:
+    """
+    Call before ``import pygame`` the first time in this process.
+
+    Args:
+        embedded_with_rumps: ``True`` when rumps owns NSApplication (main app).
+    """
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     if sys.platform == "darwin":
         os.environ.setdefault("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1")
-        # Critical: do NOT force dummy video on macOS — SDL then often reports 0 joysticks.
-        if os.environ.get("SDL_VIDEODRIVER") == "dummy":
-            del os.environ["SDL_VIDEODRIVER"]
+        os.environ.setdefault("SDL_JOYSTICK_HIDAPI", "1")
+        if embedded_with_rumps:
+            # Required: SDL must not try to become a second Cocoa GUI app.
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+        else:
+            if os.environ.get("SDL_VIDEODRIVER") == "dummy":
+                del os.environ["SDL_VIDEODRIVER"]
     else:
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
-def bootstrap_pygame_joystick() -> None:
+def bootstrap_pygame_for_menu_bar_app() -> None:
     """
-    Run once on the **main thread** (e.g. rumps ``application_did_finish_launching``)
-    before starting the background joystick poll loop.
+    Run once on the **main thread** from rumps ``on_launch``.
+
+    Does **not** call ``pygame.display.set_mode`` — that crashes when rumps is
+    already running an NSApplication.
     """
-    global _done
-    if _done:
+    global _bootstrapped_menu_bar
+    if _bootstrapped_menu_bar:
         return
 
-    configure_sdl_env()
+    configure_sdl_env(embedded_with_rumps=True)
+
+    import pygame
+
+    pygame.init()
+    pygame.joystick.init()
+    _bootstrapped_menu_bar = True
+    logger.info(
+        "SDL bootstrap (menu bar, dummy video): pygame reports %d joystick(s)",
+        pygame.joystick.get_count(),
+    )
+
+
+def bootstrap_pygame_for_standalone_cli() -> None:
+    """
+    For ``python -m …`` tools with **no** rumps — safe to use a hidden Cocoa
+    window on macOS to improve joystick enumeration.
+    """
+    global _bootstrapped_standalone
+    if _bootstrapped_standalone:
+        return
+
+    configure_sdl_env(embedded_with_rumps=False)
 
     import pygame
 
@@ -51,12 +91,17 @@ def bootstrap_pygame_joystick() -> None:
         try:
             flags = getattr(pygame, "HIDDEN", 0)
             pygame.display.set_mode((1, 1), flags)
-            logger.info("SDL (macOS): hidden display created for joystick enumeration")
+            logger.info("SDL (standalone CLI): hidden display for joystick enumeration")
         except Exception as e:
-            logger.warning("SDL (macOS): hidden display failed (%s) — joysticks may not work", e)
+            logger.warning("SDL (standalone CLI): hidden display failed (%s)", e)
     pygame.joystick.init()
-    _done = True
+    _bootstrapped_standalone = True
     logger.info(
-        "SDL bootstrap complete; pygame reports %d joystick(s)",
+        "SDL bootstrap (standalone): pygame reports %d joystick(s)",
         pygame.joystick.get_count(),
     )
+
+
+# Back-compat alias — menu bar app only
+def bootstrap_pygame_joystick() -> None:
+    bootstrap_pygame_for_menu_bar_app()

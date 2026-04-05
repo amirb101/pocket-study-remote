@@ -69,6 +69,12 @@ python -m pocket_study_remote.tools.button_logger
 Press every button and note the index printed for each. If anything differs
 from the defaults, update `pocket_study_remote/constants.py` → `Controller.ButtonIndex`.
 
+The main menu bar app cannot open an SDL/Cocoa window (it would conflict with
+rumps’ `NSApplication` and crash on recent macOS). It uses SDL “dummy” video, so
+if the menu still says “Not connected” but `button_logger` sees your pad, SDL
+enumeration in the embedded case is the limiting factor — open an issue or we
+can add a GameController-based reader later.
+
 ---
 
 ## Obsidian hotkey setup
