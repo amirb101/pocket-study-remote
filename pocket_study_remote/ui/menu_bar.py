@@ -244,20 +244,37 @@ class MenuBarApp(rumps.App):
             )
 
     def _edit_keybindings(self, _) -> None:
-        """Launch the keybinding GUI in a separate process."""
+        """Launch the keybinding GUI - stops controller to avoid conflicts."""
         import subprocess
         import sys
+        import threading
         from pathlib import Path
 
         gui_path = Path(__file__).parent / "keybind_gui.py"
 
-        # Launch GUI as separate process (so it has its own main thread for tkinter)
-        subprocess.Popen(
-            [sys.executable, str(gui_path)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        logger.info("Launched keybinding GUI in separate process")
+        # Pause controller polling to avoid button event conflicts
+        from ..main import controller
+        if controller:
+            controller._paused_for_config = True
+            logger.info("Controller paused for keybinding configuration")
+
+        def run_gui_and_resume():
+            """Run GUI in thread, then resume controller."""
+            try:
+                # Launch GUI and wait for it to close
+                result = subprocess.run(
+                    [sys.executable, str(gui_path)],
+                    check=False,
+                )
+                logger.info("Keybinding GUI closed with code %d", result.returncode)
+            finally:
+                # Resume controller polling
+                if controller:
+                    controller._paused_for_config = False
+                    logger.info("Controller resumed")
+
+        # Run in thread so menu bar stays responsive
+        threading.Thread(target=run_gui_and_resume, daemon=True).start()
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""

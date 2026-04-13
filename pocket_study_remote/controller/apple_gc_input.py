@@ -239,6 +239,10 @@ class AppleGCControllerInput:
         return None, None, None
 
     def _poll(self, GCController) -> None:
+        # Check if paused for configuration
+        if getattr(self, "_paused_for_config", False):
+            return  # Skip processing while GUI is configuring
+
         ctrls = GCController.controllers()
         n = len(ctrls)
         ctrl, pad, kind = self._pick_controller(GCController)
