@@ -19,12 +19,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pocket_study_remote.config.keybind_config import get_config, InputType, KeybindMapping
 from pocket_study_remote.core.gamepad_button import GamepadButton
-from pocket_study_remote.ipc_button_capture import (
-    start_listening,
-    stop_listening,
-    get_captured_button,
-    clear_capture_file,
-)
 
 
 class KeybindGUI:
@@ -33,8 +27,8 @@ class KeybindGUI:
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("Pocket Study Remote - Keybindings")
-        self.window.geometry("800x650")
-        self.window.minsize(700, 550)
+        self.window.geometry("850x700")
+        self.window.minsize(800, 600)
 
         # State
         self.button_vars = {}  # (mode_id, action_id) -> StringVar
@@ -186,9 +180,10 @@ class KeybindGUI:
             row,
             textvariable=var,
             font=("Helvetica", 10, "bold"),
-            width=20,
+            width=18,
             relief=tk.SUNKEN,
-            bg="#e8f4f8",
+            bg="#ffffff",
+            fg="#333333",
             cursor="hand2",
         )
         binding_label.pack(side=tk.LEFT, padx=5)
@@ -213,18 +208,28 @@ class KeybindGUI:
             row,
             text="Assign",
             command=lambda: self._start_capture(mode_id, action.id, action.name),
-            bg="#2196F3",
+            bg="#1976D2",
             fg="white",
+            font=("Helvetica", 9, "bold"),
+            relief=tk.RAISED,
+            padx=8,
+            pady=2,
         )
-        assign_btn.pack(side=tk.LEFT, padx=2)
+        assign_btn.pack(side=tk.LEFT, padx=3)
 
         # Clear button
         clear_btn = tk.Button(
             row,
             text="Clear",
             command=lambda: self._clear_assignment(mode_id, action.id, var, combo_var),
+            bg="#757575",
+            fg="white",
+            font=("Helvetica", 9),
+            relief=tk.RAISED,
+            padx=8,
+            pady=2,
         )
-        clear_btn.pack(side=tk.LEFT, padx=2)
+        clear_btn.pack(side=tk.LEFT, padx=3)
 
     def _format_mapping(self, mapping) -> str:
         """Format a mapping for display."""
@@ -238,23 +243,21 @@ class KeybindGUI:
         return "Unassigned"
 
     def _start_capture(self, mode_id: str, action_id: str, action_name: str):
-        """Start capturing button input from controller."""
+        """Start capturing button input from controller using pygame."""
         if self.capturing:
             messagebox.showwarning("Already Capturing", "Already waiting for button press. Press a button or wait to cancel.")
             return
 
         self.capturing = True
-        self.current_capture_key = (mode_id, action_id)
         
-        # Tell main app to listen for this button
+        # Check combo mode
         is_combo = self.combo_vars[(mode_id, action_id)].get()
-        start_listening(mode_id, action_id)
         
         self.status_var.set(f"CAPTURING: Press button{' COMBO' if is_combo else ''} on controller for: {action_name}")
         self.status_bar.configure(bg="#FFF3CD")
-        self.instr_label.configure(text=f"Press the button you want on your controller now... (Combo mode: {is_combo})")
+        self.instr_label.configure(text=f"Press any button on your controller now...\n(Combo mode: {is_combo})")
 
-        # Start polling thread
+        # Start polling thread with pygame
         self.capture_thread = threading.Thread(
             target=self._poll_for_capture,
             args=(mode_id, action_id, is_combo),
@@ -263,20 +266,67 @@ class KeybindGUI:
         self.capture_thread.start()
 
     def _poll_for_capture(self, mode_id: str, action_id: str, is_combo: bool):
-        """Poll for captured button in background thread."""
-        result = get_captured_button(timeout=30.0)
-        
-        self.capturing = False
-        stop_listening()
-        
-        if result:
-            button_name = result["button"]
+        """Poll for captured button using pygame/SDL directly in this process."""
+        try:
+            import pygame
             
-            # Update UI on main thread
-            self.window.after(0, lambda: self._apply_capture(mode_id, action_id, button_name, is_combo))
-        else:
-            # Timeout
+            # Initialize pygame joystick
+            pygame.init()
+            pygame.joystick.init()
+            
+            # Wait for joystick
+            joystick = None
+            start_time = time.time()
+            
+            while time.time() - start_time < 30.0 and not joystick:
+                pygame.joystick.init()
+                if pygame.joystick.get_count() > 0:
+                    joystick = pygame.joystick.Joystick(0)
+                    joystick.init()
+                    break
+                time.sleep(0.1)
+            
+            if not joystick:
+                # No joystick found
+                self.window.after(0, self._capture_timeout)
+                return
+            
+            # Poll for button press
+            captured_button = None
+            start_time = time.time()
+            
+            while time.time() - start_time < 30.0 and not captured_button:
+                for event in pygame.event.get():
+                    if event.type == pygame.JOYBUTTONDOWN:
+                        # Map button index to GamepadButton
+                        button_map = [
+                            "A", "B", "X", "Y",  # 0,1,2,3
+                            "LEFT_SHOULDER", "RIGHT_SHOULDER",  # 4,5
+                            "LEFT_TRIGGER", "RIGHT_TRIGGER",  # 6,7
+                            "SELECT", "START",  # 8,9
+                        ]
+                        if event.button < len(button_map):
+                            captured_button = button_map[event.button]
+                            break
+                
+                time.sleep(0.016)  # ~60Hz
+            
+            pygame.quit()
+            
+            if captured_button:
+                self.window.after(0, lambda: self._apply_capture(mode_id, action_id, captured_button, is_combo))
+            else:
+                self.window.after(0, self._capture_timeout)
+                
+        except Exception as e:
+            print(f"Capture error: {e}")
             self.window.after(0, self._capture_timeout)
+        finally:
+            self.capturing = False
+            try:
+                pygame.quit()
+            except:
+                pass
 
     def _apply_capture(self, mode_id: str, action_id: str, button_name: str, is_combo: bool):
         """Apply the captured button to the action."""
@@ -366,10 +416,7 @@ class KeybindGUI:
 
     def run(self):
         """Run the GUI."""
-        try:
-            self.window.mainloop()
-        finally:
-            stop_listening()
+        self.window.mainloop()
 
 
 if __name__ == "__main__":
@@ -379,6 +426,22 @@ if __name__ == "__main__":
     if not config_path.exists():
         config_path.parent.mkdir(parents=True, exist_ok=True)
         get_config()
+
+    # Check if pygame is available
+    try:
+        import pygame
+    except ImportError:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(
+            "Missing Dependency",
+            "pygame is required for controller input capture.\n\n"
+            "Install with: pip install pygame"
+        )
+        root.destroy()
+        sys.exit(1)
 
     gui = KeybindGUI()
     gui.run()
