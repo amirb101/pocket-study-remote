@@ -98,7 +98,18 @@ def _make_controller(router: ActionRouter) -> _ControllerBackend:
             logger.info(
                 "Controller backend: Apple GameController (poll starts after menu bar loads)"
             )
-            return AppleGCControllerInput(on_button_change=router.button_changed)
+            # Create controller with wrapped callback for calibration
+            controller = AppleGCControllerInput(on_button_change=None)
+
+            def calibrated_callback(button, is_pressed):
+                # Pass through calibration if active
+                if controller.on_button_event_for_calibration(str(button), is_pressed):
+                    return  # Calibration consumed this event
+                router.button_changed(button, is_pressed)
+
+            # Set the callback on the controller
+            controller._cb = calibrated_callback
+            return controller
         except Exception as e:
             logger.warning(
                 "GameController backend unavailable (%s); falling back to pygame/SDL",
@@ -158,7 +169,12 @@ def _start_connection_watcher(
 # Main
 # ---------------------------------------------------------------------------
 
+# Global controller reference for menu callbacks
+controller: _ControllerBackend | None = None
+
+
 def main() -> None:
+    global controller
     _check_accessibility()
 
     registry   = _build_registry()

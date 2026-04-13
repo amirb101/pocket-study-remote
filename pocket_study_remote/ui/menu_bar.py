@@ -159,12 +159,73 @@ class MenuBarApp(rumps.App):
             rumps.MenuItem(connection_label, callback=None),
             None,
             rumps.MenuItem(
+                "Calibrate Controller…",
+                callback=self._calibrate_controller,
+            ),
+            rumps.MenuItem(
+                "Reset Controller Mapping",
+                callback=self._reset_calibration,
+            ),
+            None,
+            rumps.MenuItem(
                 "Open Accessibility Settings…",
                 callback=self._open_accessibility_settings,
             ),
             None,
             rumps.MenuItem("Quit", callback=rumps.quit_application),
         ]
+
+    def _calibrate_controller(self, _) -> None:
+        """Start controller calibration wizard."""
+        from ..main import controller
+        from ..controller.apple_gc_input import AppleGCControllerInput
+
+        if controller and isinstance(controller, AppleGCControllerInput):
+            def on_done():
+                rumps.notification(
+                    "Pocket Study Remote",
+                    "Calibration Complete",
+                    "Controller mapping saved!",
+                )
+            if controller.start_calibration(on_done):
+                logger.info("Calibration started")
+            else:
+                rumps.alert(
+                    title="No Controller",
+                    message="Please connect a controller first.",
+                    ok="OK",
+                )
+        else:
+            rumps.alert(
+                title="Calibration Not Available",
+                message="Calibration is only available for GameController backend.",
+                ok="OK",
+            )
+
+    def _reset_calibration(self, _) -> None:
+        """Clear controller calibration."""
+        from ..main import controller
+        from ..controller.apple_gc_input import AppleGCControllerInput
+
+        if controller and isinstance(controller, AppleGCControllerInput):
+            if controller.clear_calibration():
+                rumps.alert(
+                    title="Mapping Reset",
+                    message="Controller mapping cleared. Calibrate again to set up.",
+                    ok="OK",
+                )
+            else:
+                rumps.alert(
+                    title="No Controller",
+                    message="Please connect a controller first.",
+                    ok="OK",
+                )
+        else:
+            rumps.alert(
+                title="Reset Not Available",
+                message="Reset is only available for GameController backend.",
+                ok="OK",
+            )
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""

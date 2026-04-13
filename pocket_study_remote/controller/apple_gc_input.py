@@ -21,12 +21,13 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable
+from typing import Any, Callable
 
 from Foundation import NSRunLoop, NSRunLoopCommonModes, NSTimer
 
 from ..constants import Controller
 from ..core.gamepad_button import GamepadButton
+from .calibration import get_store, CalibrationWizard
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,9 @@ class AppleGCControllerInput:
         self._last_empty_log = 0.0
         self._last_rediscover = 0.0
         self._logged_profile_gap = False
+        self._current_controller_name: str | None = None
+        self._calibration_wizard: Any = None
+        self._on_calibration_complete: Callable[[], None] | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -286,7 +290,13 @@ class AppleGCControllerInput:
         if not self._logged_name:
             self._logged_name = True
             name = _objc_prop(ctrl, "vendorName") or "controller"
+            self._current_controller_name = name
             logger.info("GameController connected: %s (profile=%s)", name, kind)
+
+            # Check if calibration needed
+            store = get_store()
+            if store.needs_calibration(name):
+                logger.info("Controller '%s' needs calibration - use 'Calibrate Controller' from menu", name)
 
         if kind == "micro":
             self._poll_micro(pad)
@@ -337,6 +347,9 @@ class AppleGCControllerInput:
 
     def _poll_physical(self, pip) -> None:
         state: dict[GamepadButton, bool] = {b: False for b in GamepadButton}
+        # Track which physical alias produced each logical button (for calibration)
+        physical_aliases: dict[GamepadButton, str] = {}
+
         try:
             buttons = pip.allButtons()
             if buttons is not None:
@@ -355,8 +368,10 @@ class AppleGCControllerInput:
                     if gpb in (GamepadButton.LEFT_TRIGGER, GamepadButton.RIGHT_TRIGGER):
                         if _btn_press(el) or _axis(el) >= _TH:
                             state[gpb] = True
+                            physical_aliases[gpb] = alias
                     elif _btn_press(el):
                         state[gpb] = True
+                        physical_aliases[gpb] = alias
         except Exception as e:
             logger.debug("physical allButtons: %s", e)
 
@@ -373,6 +388,7 @@ class AppleGCControllerInput:
                     gpb = _physical_alias_axis_to_trigger(_norm_alias(alias))
                     if gpb is not None and _axis(el) >= _TH:
                         state[gpb] = True
+                        physical_aliases[gpb] = alias
         except Exception as e:
             logger.debug("physical allAxes: %s", e)
 
@@ -381,18 +397,104 @@ class AppleGCControllerInput:
             if dpads is not None:
                 for i in range(dpads.count()):
                     dpad = dpads.objectAtIndex_(i)
-                    state[GamepadButton.DPAD_UP] |= _btn_press(_objc_prop(dpad, "up"))
-                    state[GamepadButton.DPAD_DOWN] |= _btn_press(_objc_prop(dpad, "down"))
-                    state[GamepadButton.DPAD_LEFT] |= _btn_press(_objc_prop(dpad, "left"))
-                    state[GamepadButton.DPAD_RIGHT] |= _btn_press(_objc_prop(dpad, "right"))
+                    if _btn_press(_objc_prop(dpad, "up")):
+                        state[GamepadButton.DPAD_UP] = True
+                        physical_aliases[GamepadButton.DPAD_UP] = "dpadup"
+                    if _btn_press(_objc_prop(dpad, "down")):
+                        state[GamepadButton.DPAD_DOWN] = True
+                        physical_aliases[GamepadButton.DPAD_DOWN] = "dpaddown"
+                    if _btn_press(_objc_prop(dpad, "left")):
+                        state[GamepadButton.DPAD_LEFT] = True
+                        physical_aliases[GamepadButton.DPAD_LEFT] = "dpadleft"
+                    if _btn_press(_objc_prop(dpad, "right")):
+                        state[GamepadButton.DPAD_RIGHT] = True
+                        physical_aliases[GamepadButton.DPAD_RIGHT] = "dpadright"
         except Exception as e:
             logger.debug("physical allDpads: %s", e)
 
-        self._emit_changes(state)
+        self._emit_changes(state, physical_aliases if physical_aliases else None)
 
-    def _emit_changes(self, state: dict[GamepadButton, bool]) -> None:
+    def _emit_changes(self, state: dict[GamepadButton, bool], physical_aliases: dict[GamepadButton, str] | None = None) -> None:
+        """
+        Emit button changes, applying calibration if available.
+
+        If physical_aliases is provided, we'll use calibration mapping to translate
+        physical button names to logical buttons.
+        """
+        # Get calibration mapping if available
+        store = get_store()
+        mapping = None
+        if self._current_controller_name:
+            mapping = store.get_mapping(self._current_controller_name)
+
+        # If we have a mapping and physical aliases, translate
+        if mapping and mapping.is_complete and physical_aliases:
+            translated_state: dict[GamepadButton, bool] = {b: False for b in GamepadButton}
+            for logical_btn, pressed in state.items():
+                if not pressed:
+                    continue
+                # Find physical alias for this logical button
+                alias = physical_aliases.get(logical_btn)
+                if alias:
+                    # Get mapped logical button from calibration
+                    mapped_btn = mapping.get_button(alias)
+                    if mapped_btn:
+                        translated_state[mapped_btn] = True
+                    else:
+                        # No mapping for this alias, pass through
+                        translated_state[logical_btn] = True
+                else:
+                    translated_state[logical_btn] = True
+            state = translated_state
+
         for btn, pressed in state.items():
             prev = self._last.get(btn, False)
             if pressed != prev:
                 self._cb(btn, pressed)
         self._last = dict(state)
+
+    def start_calibration(self, on_complete: Callable[[], None] | None = None) -> bool:
+        """
+        Start calibration wizard for current controller.
+        Returns True if calibration started, False if no controller connected.
+        """
+        if not self._current_controller_name:
+            logger.warning("Cannot calibrate: no controller connected")
+            return False
+
+        self._on_calibration_complete = on_complete
+
+        def on_complete_mapping(mapping):
+            logger.info("Calibration complete for '%s'", mapping.controller_name)
+            if self._on_calibration_complete:
+                self._on_calibration_complete()
+            self._calibration_wizard = None
+
+        def on_cancel():
+            logger.info("Calibration cancelled")
+            self._calibration_wizard = None
+
+        self._calibration_wizard = CalibrationWizard(
+            self._current_controller_name,
+            on_complete_mapping,
+            on_cancel,
+        )
+        self._calibration_wizard.start()
+        return True
+
+    def on_button_event_for_calibration(self, alias: str, is_pressed: bool) -> bool:
+        """
+        Pass button events to calibration wizard if active.
+        Returns True if event was consumed by calibration.
+        """
+        if self._calibration_wizard and self._calibration_wizard._active:
+            return self._calibration_wizard.on_button_event(alias, is_pressed)
+        return False
+
+    def clear_calibration(self) -> bool:
+        """Clear calibration for current controller."""
+        if not self._current_controller_name:
+            return False
+        get_store().clear_mapping(self._current_controller_name)
+        logger.info("Cleared calibration for '%s'", self._current_controller_name)
+        return True
