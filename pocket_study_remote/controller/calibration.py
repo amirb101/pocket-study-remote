@@ -141,9 +141,10 @@ def get_store() -> CalibrationStore:
 
 class CalibrationWizard:
     """
-    Interactive calibration using rumps alerts (no tkinter needed).
+    Interactive calibration using rumps notifications (non-blocking).
 
     Guides user through pressing each button in sequence.
+    Uses notifications instead of blocking alerts so controller events still flow.
     """
 
     def __init__(
@@ -160,16 +161,35 @@ class CalibrationWizard:
         self.detected_aliases: set[str] = set()
         self._active = False
         self._last_press_time = 0.0
+        self._timer = None
+        self._waiting_for_press = False
 
     def start(self) -> None:
         """Start the calibration wizard."""
         import rumps
 
         self._active = True
-        self._show_current_prompt()
+        self._waiting_for_press = True
+        self._show_current_notification()
 
-    def _show_current_prompt(self) -> None:
-        """Show prompt for current button using rumps alert."""
+        # Auto-cancel after 2 minutes of inactivity
+        def timeout_check():
+            if not self._active:
+                return
+            # Check if it's been too long since last press
+            now = time.time()
+            if now - self._last_press_time > 120:  # 2 minutes
+                logger.warning("[Calibration] Timeout - no button pressed for 2 minutes")
+                self.cancel()
+
+        def schedule_timeout(_timer):
+            timeout_check()
+
+        self._timeout_timer = rumps.Timer(schedule_timeout, 30.0)  # Check every 30s
+        self._timeout_timer.start()
+
+    def _show_current_notification(self) -> None:
+        """Show non-blocking notification for current button."""
         import rumps
 
         if not self._active or self.current_index >= len(CALIBRATION_ORDER):
@@ -178,42 +198,42 @@ class CalibrationWizard:
         btn = CALIBRATION_ORDER[self.current_index]
         progress = f"{self.current_index + 1}/{len(CALIBRATION_ORDER)}"
 
-        rumps.alert(
-            title=f"Controller Calibration ({progress})",
-            message=f'Press "{btn.display_name}" on your controller\n\n'
-                    f"Then click OK to confirm",
-            ok="I pressed it",
-            cancel="Cancel",
+        # Use notification (non-blocking) instead of alert
+        rumps.notification(
+            title=f"Calibration {progress}",
+            subtitle=f"Press: {btn.display_name}",
+            message="Press the button on your controller now",
+            sound=False,
         )
 
-        # After alert closes, continue or cancel
-        # Note: rumps.alert is synchronous, so we check if still active
-        if not self._active:
-            return
+        logger.info("[Calibration] Waiting for: %s (%s)", btn.name, btn.display_name)
 
-        # Move to next
+    def _advance(self) -> None:
+        """Move to next button or finish."""
+        import rumps
+
         self.current_index += 1
+        self._waiting_for_press = True
+
         if self.current_index >= len(CALIBRATION_ORDER):
             self._finish()
         else:
-            # Schedule next prompt
-            import threading
-            threading.Timer(0.1, self._show_current_prompt).start()
+            self._show_current_notification()
 
     def on_button_event(self, alias: str, is_pressed: bool) -> bool:
         """
         Called when a button is pressed during calibration.
         Returns True if this button was consumed (should not propagate).
         """
-        if not self._active or not is_pressed:
+        if not self._active or not is_pressed or not self._waiting_for_press:
             return False
         if self.current_index >= len(CALIBRATION_ORDER):
             return False
 
         # Debounce
         now = time.time()
-        if now - self._last_press_time < 0.2:
-            return False
+        if now - self._last_press_time < 0.3:
+            return True  # Consume but don't process
         self._last_press_time = now
 
         normalized = "".join(c.lower() for c in alias if c.isalnum())
@@ -228,9 +248,8 @@ class CalibrationWizard:
         logger.info("[Calibration] Mapped %s -> %s", alias, logical_button.name)
 
         # Advance to next
-        self.current_index += 1
-        if self.current_index >= len(CALIBRATION_ORDER):
-            self._finish()
+        self._waiting_for_press = False
+        self._advance()
         return True
 
     def _finish(self) -> None:
@@ -238,18 +257,37 @@ class CalibrationWizard:
         import rumps
 
         self._active = False
+        for t in (self._timer, getattr(self, '_timeout_timer', None)):
+            if t:
+                try:
+                    t.stop()
+                except Exception:
+                    pass
+        self._timer = None
+        self._timeout_timer = None
+
         self.mapping.is_complete = True
         get_store().save_mapping(self.mapping)
 
-        rumps.alert(
+        rumps.notification(
             title="Calibration Complete!",
-            message=f"Controller '{self.controller_name}' has been calibrated.\n"
-                    f"Mapped {len(self.mapping.alias_to_button)} buttons.",
-            ok="Great!",
+            subtitle=self.controller_name,
+            message=f"Mapped {len(self.mapping.alias_to_button)} buttons",
+            sound=True,
         )
+        logger.info("[Calibration] Complete! Mapped %d buttons", len(self.mapping.alias_to_button))
         self.on_complete(self.mapping)
 
     def cancel(self) -> None:
         """Cancel calibration."""
         self._active = False
+        self._waiting_for_press = False
+        for t in (self._timer, getattr(self, '_timeout_timer', None)):
+            if t:
+                try:
+                    t.stop()
+                except Exception:
+                    pass
+        self._timer = None
+        self._timeout_timer = None
         self.on_cancel()
