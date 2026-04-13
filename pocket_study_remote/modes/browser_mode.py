@@ -8,14 +8,24 @@ from ..core.gamepad_button import GamepadButton
 
 class BrowserMode(AppMode):
     """
-    Active when any Chromium-family browser is frontmost.
+    Active when any web browser is frontmost.
 
-    Covers Comet, Chrome, Arc, Edge, Brave — all share identical keyboard
-    shortcuts so one mode handles them all.
+    Covers Chrome, Safari, Firefox, Arc, Edge, Brave, Opera, Vivaldi,
+    Orion, Zen Browser, and Comet. All share standard macOS browser
+    shortcuts (Cmd+T, Cmd+W, Cmd+[, Cmd+Shift+[, etc.).
 
-    Combo:  A + B = Bookmark page (Cmd+D).
-    A alone fires "new tab"; B alone fires "go back".
-    When B is pressed while A is held, the combo fires bookmark instead.
+    Shortcuts:
+    - A: New Tab (Cmd+T)
+    - B: Go Back (Cmd+[)
+    - X: Close Tab (Cmd+W)
+    - Y: Reopen Closed Tab (Cmd+Shift+T)
+    - A+B (combo): Bookmark Page (Cmd+D)
+    - D-Pad Left/Right: Back/Forward
+    - D-Pad Up/Down: Scroll Page
+    - L1/R1: Previous/Next Tab
+    - L2: New Window
+    - R2: Search Tabs
+    - Start: Focus Address Bar
     """
 
     id             = "browser"

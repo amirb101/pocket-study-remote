@@ -105,17 +105,35 @@ class BundleID:
     SPOTIFY  = "com.spotify.client"
     OBSIDIAN = "md.obsidian"
 
-    # Chromium-family browsers (all share identical keyboard shortcuts)
-    CHROME  = "com.google.Chrome"
-    ARC     = "company.thebrowser.Browser"
-    EDGE    = "com.microsoft.Edge"
-    BRAVE   = "com.brave.Browser"
-    COMET   = "ai.perplexity.comet"   # ← confirm with mdls command above
+    # Browser bundle IDs (most share standard macOS shortcuts)
+    CHROME   = "com.google.Chrome"
+    ARC      = "company.thebrowser.Browser"
+    EDGE     = "com.microsoft.Edge"
+    BRAVE    = "com.brave.Browser"
+    COMET    = "ai.perplexity.comet"
+    SAFARI   = "com.apple.Safari"
+    FIREFOX  = "org.mozilla.firefox"
+    FIREFOX_NIGHTLY = "org.mozilla.nightly"
+    OPERA    = "com.operasoftware.Opera"
+    VIVALDI  = "com.vivaldi.Vivaldi"
+    ORION    = "com.kagi.kagimac"
+    ZEN      = "app.zen-browser.zen"
 
-    CHROMIUM_BROWSERS: list[str] = [
+    # All browsers that use standard macOS shortcuts (Cmd+T, Cmd+W, Cmd+[, etc.)
+    ALL_BROWSERS: list[str] = [
         CHROME,
         ARC,
         EDGE,
         BRAVE,
         COMET,
+        SAFARI,
+        FIREFOX,
+        FIREFOX_NIGHTLY,
+        OPERA,
+        VIVALDI,
+        ORION,
+        ZEN,
     ]
+
+    # Keep for backwards compatibility
+    CHROMIUM_BROWSERS = ALL_BROWSERS
