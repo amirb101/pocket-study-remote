@@ -11,99 +11,100 @@ from ..core.action import (
     switch_space,
     toggle_mute,
 )
-from ..core.app_mode import AppMode
-from ..core.gamepad_button import GamepadButton
+from ..core.configurable_mode import ConfigurableMode
 from ..executors.applescript_executor import AppleScriptExecutor
 
 
-class GlobalMode(AppMode):
+class GlobalMode(ConfigurableMode):
     """
     Fallback mode — active whenever no specific app is matched.
 
     Provides universally useful controls: music playback, volume,
-    system navigation, and quick app launchers.  Every action here
-    should feel natural to press without looking at the screen.
+    system navigation, and quick app launchers.
+
+    Buttons are configurable via Edit Keybindings.
     """
 
     id             = "global"
     display_name   = "Global"
     sf_symbol_name = "gamecontroller"
 
-    @property
-    def button_map(self) -> dict[GamepadButton, Action]:
-        return {
-            # ── Face buttons ──────────────────────────────────────────
-            GamepadButton.A: apple_script(
+    def _create_action_from_id(self, action_id: str) -> Action | None:
+        """Create action from ID."""
+        action_map = {
+            "play_pause": apple_script(
                 AppleScriptExecutor.Spotify.PLAYPAUSE,
                 id="global-play-pause",
                 name="Play / Pause",
             ),
-            GamepadButton.B: toggle_mute(
-                id="global-toggle-mute",
-                name="Toggle Mute",
-            ),
-            GamepadButton.X: screenshot(
-                region=True,
-                id="global-screenshot-region",
-                name="Screenshot (Region)",
-            ),
-            GamepadButton.Y: screenshot(
-                region=False,
-                id="global-screenshot-full",
-                name="Screenshot (Full Screen)",
-            ),
-
-            # ── D-pad ─────────────────────────────────────────────────
-            GamepadButton.DPAD_UP: adjust_volume(
-                Volume.STEP_SIZE,
-                id="global-volume-up",
-                name="Volume Up",
-            ),
-            GamepadButton.DPAD_DOWN: adjust_volume(
-                -Volume.STEP_SIZE,
-                id="global-volume-down",
-                name="Volume Down",
-            ),
-            GamepadButton.DPAD_LEFT: apple_script(
-                AppleScriptExecutor.Spotify.PREVIOUS_TRACK,
-                id="global-previous-track",
-                name="Previous Track",
-            ),
-            GamepadButton.DPAD_RIGHT: apple_script(
+            "next_track": apple_script(
                 AppleScriptExecutor.Spotify.NEXT_TRACK,
                 id="global-next-track",
                 name="Next Track",
             ),
-
-            # ── Shoulder buttons ──────────────────────────────────────
-            GamepadButton.LEFT_SHOULDER: switch_space(
-                "left",
-                id="global-space-left",
-                name="Switch Space Left",
+            "prev_track": apple_script(
+                AppleScriptExecutor.Spotify.PREVIOUS_TRACK,
+                id="global-previous-track",
+                name="Previous Track",
             ),
-            GamepadButton.RIGHT_SHOULDER: switch_space(
-                "right",
-                id="global-space-right",
-                name="Switch Space Right",
+            "volume_up": adjust_volume(
+                Volume.STEP_SIZE,
+                id="global-volume-up",
+                name="Volume Up",
             ),
-
-            # ── Triggers ─────────────────────────────────────────────
-            GamepadButton.LEFT_TRIGGER: keystroke(
+            "volume_down": adjust_volume(
+                -Volume.STEP_SIZE,
+                id="global-volume-down",
+                name="Volume Down",
+            ),
+            "mute": toggle_mute(
+                id="global-toggle-mute",
+                name="Toggle Mute",
+            ),
+            "screenshot": screenshot(
+                region=True,
+                id="global-screenshot-region",
+                name="Screenshot (Region)",
+            ),
+            "screenshot_full": screenshot(
+                region=False,
+                id="global-screenshot-full",
+                name="Screenshot (Full Screen)",
+            ),
+            "mission_control": keystroke(
                 "up_arrow", ["ctrl"],
                 id="global-mission-control",
                 name="Mission Control",
             ),
-            # RIGHT_TRIGGER intentionally unassigned in V1
-
-            # ── Menu buttons ──────────────────────────────────────────
-            GamepadButton.START: open_app(
+            "spotlight": keystroke(
+                "space", ["cmd"],
+                id="global-spotlight",
+                name="Open Spotlight",
+            ),
+            "lock_screen": keystroke(
+                "q", ["cmd", "ctrl"],
+                id="global-lock-screen",
+                name="Lock Screen",
+            ),
+            "open_obsidian": open_app(
                 BundleID.OBSIDIAN,
                 id="global-open-obsidian",
                 name="Open Obsidian",
             ),
-            GamepadButton.SELECT: open_app(
+            "open_spotify": open_app(
                 BundleID.SPOTIFY,
                 id="global-open-spotify",
                 name="Open Spotify",
             ),
+            "space_left": switch_space(
+                "left",
+                id="global-space-left",
+                name="Switch Space Left",
+            ),
+            "space_right": switch_space(
+                "right",
+                id="global-space-right",
+                name="Switch Space Right",
+            ),
         }
+        return action_map.get(action_id)

@@ -260,6 +260,34 @@ class KeybindConfig:
                 ))
         self.modes["global"] = global_mode
 
+        # Obsidian mode defaults
+        obsidian = ModeConfig(
+            mode_id="obsidian",
+            mode_name="Obsidian",
+            actions=[
+                KeybindAction("command_palette", "Command Palette", "Open command palette", GamepadButton.A),
+                KeybindAction("quick_switcher", "Quick Switcher", "Jump between notes", GamepadButton.B),
+                KeybindAction("daily_note", "Daily Note", "Open today's daily note", GamepadButton.X),
+                KeybindAction("toggle_checklist", "Toggle Checklist", "Toggle checklist status", GamepadButton.Y),
+                KeybindAction("navigate_back", "Navigate Back", "Go back in note history", GamepadButton.DPAD_LEFT),
+                KeybindAction("navigate_forward", "Navigate Forward", "Go forward in note history", GamepadButton.DPAD_RIGHT),
+                KeybindAction("toggle_sidebar", "Toggle Sidebar", "Toggle left sidebar", GamepadButton.LEFT_SHOULDER),
+                KeybindAction("search_all", "Search All", "Search all files", GamepadButton.RIGHT_SHOULDER),
+                KeybindAction("insert_template", "Insert Template", "Insert template", GamepadButton.LEFT_TRIGGER),
+                KeybindAction("graph_view", "Graph View", "Open graph view", GamepadButton.RIGHT_TRIGGER),
+                KeybindAction("new_note", "New Note", "Create new note", GamepadButton.START),
+                KeybindAction("search", "Search", "Search current file", GamepadButton.SELECT),
+            ],
+        )
+        for action in obsidian.actions:
+            if action.default_button:
+                obsidian.set_mapping(KeybindMapping(
+                    action_id=action.id,
+                    input_type=InputType.SIMPLE,
+                    button=action.default_button,
+                ))
+        self.modes["obsidian"] = obsidian
+
         self._save()
         logger.info("Created default keybindings")
 
