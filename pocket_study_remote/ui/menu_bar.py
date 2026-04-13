@@ -179,10 +179,6 @@ class MenuBarApp(rumps.App):
                 "Calibrate Controller…",
                 callback=self._calibrate_controller,
             ),
-            rumps.MenuItem(
-                "Reset Controller Mapping",
-                callback=self._reset_calibration,
-            ),
             None,
             rumps.MenuItem(
                 "Open Accessibility Settings…",
@@ -193,11 +189,14 @@ class MenuBarApp(rumps.App):
         ]
 
     def _calibrate_controller(self, _) -> None:
-        """Start controller calibration wizard."""
+        """Start controller calibration wizard (clears any existing mapping first)."""
         from ..main import controller
         from ..controller.apple_gc_input import AppleGCControllerInput
 
         if controller and isinstance(controller, AppleGCControllerInput):
+            # Clear any existing calibration first
+            controller.clear_calibration()
+
             def on_done():
                 rumps.notification(
                     "Pocket Study Remote",
@@ -205,7 +204,7 @@ class MenuBarApp(rumps.App):
                     "Controller mapping saved!",
                 )
             if controller.start_calibration(on_done):
-                logger.info("Calibration started")
+                logger.info("Calibration started (previous mapping cleared)")
             else:
                 rumps.alert(
                     title="No Controller",
@@ -216,31 +215,6 @@ class MenuBarApp(rumps.App):
             rumps.alert(
                 title="Calibration Not Available",
                 message="Calibration is only available for GameController backend.",
-                ok="OK",
-            )
-
-    def _reset_calibration(self, _) -> None:
-        """Clear controller calibration."""
-        from ..main import controller
-        from ..controller.apple_gc_input import AppleGCControllerInput
-
-        if controller and isinstance(controller, AppleGCControllerInput):
-            if controller.clear_calibration():
-                rumps.alert(
-                    title="Mapping Reset",
-                    message="Controller mapping cleared. Calibrate again to set up.",
-                    ok="OK",
-                )
-            else:
-                rumps.alert(
-                    title="No Controller",
-                    message="Please connect a controller first.",
-                    ok="OK",
-                )
-        else:
-            rumps.alert(
-                title="Reset Not Available",
-                message="Reset is only available for GameController backend.",
                 ok="OK",
             )
 
