@@ -168,8 +168,15 @@ class CalibrationWizard:
         """Start the calibration wizard."""
         import rumps
 
+        # Reset state for fresh calibration
         self._active = True
         self._waiting_for_press = True
+        self._last_press_time = time.time()
+        self.current_index = 0
+        self.detected_aliases.clear()
+        self.mapping.alias_to_button.clear()
+        self.mapping.is_complete = False
+
         self._show_current_notification()
 
         # Auto-cancel after 2 minutes of inactivity
