@@ -179,6 +179,10 @@ class MenuBarApp(rumps.App):
                 "Calibrate Controller…",
                 callback=self._calibrate_controller,
             ),
+            rumps.MenuItem(
+                "Edit Keybindings…",
+                callback=self._edit_keybindings,
+            ),
             None,
             rumps.MenuItem(
                 "Open Accessibility Settings…",
@@ -217,6 +221,11 @@ class MenuBarApp(rumps.App):
                 message="Calibration is only available for GameController backend.",
                 ok="OK",
             )
+
+    def _edit_keybindings(self, _) -> None:
+        """Open the keybinding editor GUI."""
+        from ..ui.keybind_editor import show_keybind_editor
+        show_keybind_editor()
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""
