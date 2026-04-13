@@ -223,21 +223,20 @@ class MenuBarApp(rumps.App):
             )
 
     def _edit_keybindings(self, _) -> None:
-        """Open the keybindings JSON file for editing."""
+        """Launch the keybinding GUI in a separate process."""
         import subprocess
+        import sys
         from pathlib import Path
 
-        config_path = Path.home() / ".config" / "pocket-study-remote" / "keybindings.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        gui_path = Path(__file__).parent / "keybind_gui.py"
 
-        if not config_path.exists():
-            # Create default config first
-            from ..config.keybind_config import get_config
-            get_config()  # This creates defaults
-
-        # Open in default editor
-        subprocess.run(["open", str(config_path)])
-        self.status = f"Opened {config_path} - edit and save, changes apply on next mode switch"
+        # Launch GUI as separate process (so it has its own main thread for tkinter)
+        subprocess.Popen(
+            [sys.executable, str(gui_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("Launched keybinding GUI in separate process")
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""
