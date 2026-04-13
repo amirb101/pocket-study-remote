@@ -298,12 +298,61 @@ class AppleGCControllerInput:
             if store.needs_calibration(name):
                 logger.info("Controller '%s' needs calibration - use 'Calibrate Controller' from menu", name)
 
+        # Check if we're in button capture mode (for keybinding GUI)
+        from ..ipc_button_capture import is_listening, capture_button
+        if is_listening() and pad is not None:
+            captured = self._check_for_capture(pad, kind)
+            if captured:
+                capture_button(captured)
+                return  # Don't process as normal input
+
         if kind == "micro":
             self._poll_micro(pad)
         elif kind == "physical":
             self._poll_physical(pad)
         else:
             self._poll_extended(pad)
+
+    def _check_for_capture(self, pad, kind: str) -> str | None:
+        """Check if any button is pressed for capture mode. Returns button name if pressed."""
+        buttons_to_check = [
+            ("buttonA", GamepadButton.A),
+            ("buttonB", GamepadButton.B),
+            ("buttonX", GamepadButton.X),
+            ("buttonY", GamepadButton.Y),
+            ("leftShoulder", GamepadButton.LEFT_SHOULDER),
+            ("rightShoulder", GamepadButton.RIGHT_SHOULDER),
+            ("leftTrigger", GamepadButton.LEFT_TRIGGER),
+            ("rightTrigger", GamepadButton.RIGHT_TRIGGER),
+        ]
+        
+        for btn_prop, btn_enum in buttons_to_check:
+            val = _objc_prop(pad, btn_prop)
+            if val is not None and _btn_press(val):
+                return btn_enum.name
+        
+        # Check D-pad
+        dpad = _objc_prop(pad, "dpad")
+        if dpad:
+            if _btn_press(_objc_prop(dpad, "up")):
+                return GamepadButton.DPAD_UP.name
+            if _btn_press(_objc_prop(dpad, "down")):
+                return GamepadButton.DPAD_DOWN.name
+            if _btn_press(_objc_prop(dpad, "left")):
+                return GamepadButton.DPAD_LEFT.name
+            if _btn_press(_objc_prop(dpad, "right")):
+                return GamepadButton.DPAD_RIGHT.name
+        
+        # Check menu buttons
+        menu = _objc_prop(pad, "buttonMenu")
+        if menu and _btn_press(menu):
+            return GamepadButton.START.name
+        
+        options = _objc_prop(pad, "buttonOptions")
+        if options and _btn_press(options):
+            return GamepadButton.SELECT.name
+        
+        return None
 
     def _poll_micro(self, pad) -> None:
         dpad = _objc_prop(pad, "dpad")
