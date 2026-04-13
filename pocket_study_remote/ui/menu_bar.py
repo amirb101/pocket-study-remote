@@ -72,6 +72,7 @@ class MenuBarApp(rumps.App):
 
     def application_did_finish_launching(self, notification) -> None:
         """Called by rumps after the AppKit run loop starts."""
+        logger.info("MenuBarApp: application_did_finish_launching — starting controller")
         # GameController defaults to ignoring pads while this process is not key;
         # menu bar remotes must opt in or the controller appears "dead" in other apps.
         try:
@@ -82,7 +83,10 @@ class MenuBarApp(rumps.App):
         except Exception as e:
             logger.debug("GameController shouldMonitorBackgroundEvents: %s", e)
 
-        self._on_launch()
+        try:
+            self._on_launch()
+        except Exception as e:
+            logger.exception("MenuBarApp: _on_launch failed: %s", e)
 
     # ------------------------------------------------------------------
     # Private: overlay flash

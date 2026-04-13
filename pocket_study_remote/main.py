@@ -162,7 +162,13 @@ def main() -> None:
 
     def on_launch() -> None:
         """Called by rumps after the AppKit run loop starts."""
-        controller.start()
+        logger.info("on_launch: starting controller...")
+        try:
+            controller.start()
+        except Exception as e:
+            logger.exception("on_launch: controller.start() failed: %s", e)
+            raise
+        logger.info("on_launch: controller started, starting detector...")
         detector.start()
         _start_connection_watcher(controller, app.update_connection)
         logger.info("Pocket Study Remote is running")

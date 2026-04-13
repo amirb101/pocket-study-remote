@@ -167,6 +167,7 @@ class AppleGCControllerInput:
 
     def start(self) -> None:
         """Schedule polling on the main run loop (call from AppKit main thread)."""
+        logger.info("AppleGCControllerInput.start() entered")
         from GameController import GCController
 
         try:
