@@ -200,10 +200,6 @@ class MenuBarApp(rumps.App):
                 "Calibrate Controller…",
                 callback=self._calibrate_controller,
             ),
-            rumps.MenuItem(
-                "Edit Keybindings…",
-                callback=self._edit_keybindings,
-            ),
             None,
             rumps.MenuItem(
                 "Open Accessibility Settings…",
@@ -242,39 +238,6 @@ class MenuBarApp(rumps.App):
                 message="Calibration is only available for GameController backend.",
                 ok="OK",
             )
-
-    def _edit_keybindings(self, _) -> None:
-        """Launch the keybinding GUI - stops controller to avoid conflicts."""
-        import subprocess
-        import sys
-        import threading
-        from pathlib import Path
-
-        gui_path = Path(__file__).parent / "keybind_gui.py"
-
-        # Pause controller polling to avoid button event conflicts
-        from ..main import controller
-        if controller:
-            controller._paused_for_config = True
-            logger.info("Controller paused for keybinding configuration")
-
-        def run_gui_and_resume():
-            """Run GUI in thread, then resume controller."""
-            try:
-                # Launch GUI and wait for it to close
-                result = subprocess.run(
-                    [sys.executable, str(gui_path)],
-                    check=False,
-                )
-                logger.info("Keybinding GUI closed with code %d", result.returncode)
-            finally:
-                # Resume controller polling
-                if controller:
-                    controller._paused_for_config = False
-                    logger.info("Controller resumed")
-
-        # Run in thread so menu bar stays responsive
-        threading.Thread(target=run_gui_and_resume, daemon=True).start()
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""

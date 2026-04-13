@@ -37,9 +37,6 @@ class KeybindGUI:
 
         self._build_ui()
         self._load_config()
-        
-        # Clear any stale capture file
-        clear_capture_file()
 
     def _build_ui(self):
         """Build the user interface."""
