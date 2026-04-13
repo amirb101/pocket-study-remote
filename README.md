@@ -20,9 +20,13 @@ There is **no main document window** — only the menu bar icon (and the Dock ti
 
 ### 1. Controller
 
-Set the physical switch on the bottom of the 8BitDo Micro to **D** (Direct Input).
 Pair via Bluetooth: hold the pairing button until the lights flash, then add in
-macOS System Settings → Bluetooth.
+macOS **System Settings → Bluetooth**.
+
+The menu bar app reads the pad through **Apple GameController**. If it never
+shows as connected, try the bottom **mode switch**: **X** or **S** (Switch)
+often appears as a standard Bluetooth gamepad to macOS; **D** is mainly for
+the pygame `button_logger` tool.
 
 ### 2. Python environment
 

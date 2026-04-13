@@ -72,6 +72,16 @@ class MenuBarApp(rumps.App):
 
     def application_did_finish_launching(self, notification) -> None:
         """Called by rumps after the AppKit run loop starts."""
+        # GameController defaults to ignoring pads while this process is not key;
+        # menu bar remotes must opt in or the controller appears "dead" in other apps.
+        try:
+            from GameController import GCController
+
+            GCController.setShouldMonitorBackgroundEvents_(True)
+            logger.info("GameController: shouldMonitorBackgroundEvents enabled")
+        except Exception as e:
+            logger.debug("GameController shouldMonitorBackgroundEvents: %s", e)
+
         self._on_launch()
 
     # ------------------------------------------------------------------
