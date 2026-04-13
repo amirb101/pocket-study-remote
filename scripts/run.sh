@@ -59,4 +59,4 @@ echo "→ Installing deps …"
 "$VPY" -m pip install -r requirements.txt
 
 echo "→ Starting app (Ctrl+C to stop) …"
-exec "$VPY" -m pocket_study_remote
+exec "$VPY" -m buttonbridge

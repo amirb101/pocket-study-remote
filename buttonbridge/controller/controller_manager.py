@@ -116,7 +116,7 @@ class ControllerManager:
                     logger.warning(
                         "Pygame still sees 0 joysticks. Try: quit Steam; enable Input Monitoring for "
                         "Terminal/Python; re-pair the controller; SDL_JOYSTICK_HIDAPI=0 or =1. "
-                        "Diagnostic: python -m pocket_study_remote.tools.button_logger"
+                        "Diagnostic: python -m buttonbridge.tools.button_logger"
                     )
 
             elif count == 0 and joystick is not None:
@@ -164,7 +164,7 @@ class ControllerManager:
 #
 # These translate raw pygame indices/values → typed GamepadButton enums.
 # If your controller feels wrong, run:
-#   python -m pocket_study_remote.tools.button_logger
+#   python -m buttonbridge.tools.button_logger
 # and update the indices here.
 # ---------------------------------------------------------------------------
 

@@ -35,7 +35,7 @@ class Controller:
     # 8BitDo Micro button indices in D-input mode (pygame joystick)
     #
     # These were determined empirically. If buttons feel wrong on your unit,
-    # run `python -m pocket_study_remote.tools.button_logger` (see tools/)
+    # run `python -m buttonbridge.tools.button_logger` (see tools/)
     # to print every raw event and remap here.
     # ---------------------------------------------------------------------------
     class ButtonIndex:

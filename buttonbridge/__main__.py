@@ -1,4 +1,4 @@
-"""Run with: ``python -m pocket_study_remote`` (from the repository root)."""
+"""Run with: ``python -m buttonbridge`` (from the repository root)."""
 
 import sys
 from pathlib import Path
@@ -114,13 +114,13 @@ def main():
             root.destroy()
             
             if launch:
-                from pocket_study_remote.main import main as real_main
+                from buttonbridge.main import main as real_main
                 real_main()
         return
     
     # Check if launched with --no-gui flag (skip startup dialog)
     if "--no-gui" in sys.argv:
-        from pocket_study_remote.main import main as real_main
+        from buttonbridge.main import main as real_main
         real_main()
         return
     
@@ -131,11 +131,11 @@ def main():
         # User wants to configure first
         if launch_keybinding_gui():
             # After GUI closes, launch main app
-            from pocket_study_remote.main import main as real_main
+            from buttonbridge.main import main as real_main
             real_main()
     else:
         # User wants to launch directly
-        from pocket_study_remote.main import main as real_main
+        from buttonbridge.main import main as real_main
         real_main()
 
 
