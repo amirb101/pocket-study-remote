@@ -89,12 +89,18 @@ def _make_controller(router: ActionRouter) -> _ControllerBackend:
         try:
             from .controller.apple_gc_input import AppleGCControllerInput
 
+            logger.info(
+                "Controller backend: Apple GameController (poll starts after menu bar loads)"
+            )
             return AppleGCControllerInput(on_button_change=router.button_changed)
         except Exception as e:
             logger.warning(
                 "GameController backend unavailable (%s); falling back to pygame/SDL",
                 e,
             )
+            logger.info("Controller backend: pygame/SDL (macOS fallback)")
+            return ControllerManager(on_button_change=router.button_changed)
+    logger.info("Controller backend: pygame/SDL (non-macOS)")
     return ControllerManager(on_button_change=router.button_changed)
 
 
