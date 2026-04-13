@@ -63,21 +63,36 @@ class MenuBarApp(rumps.App):
             self._start_controller()
 
     # ------------------------------------------------------------------
-    # Public updates (called from other threads — rumps is thread-safe
-    # for menu/title updates)
+    # Public updates (called from other threads — must dispatch to main thread)
     # ------------------------------------------------------------------
+
+    def _dispatch_main(self, fn, *args):
+        """Dispatch a function to the main thread."""
+        from Foundation import NSOperationQueue
+
+        def operation():
+            fn(*args)
+
+        NSOperationQueue.mainQueue().addOperationWithBlock_(operation)
 
     def update_mode(self, mode: AppMode) -> None:
         """Reflect a mode change in the status bar and flash the mode name."""
-        self._current_mode = mode.display_name
-        self._rebuild_menu()
-        self._flash_overlay(mode)
+        # Must dispatch to main thread for UI updates
+        def _update():
+            self._current_mode = mode.display_name
+            self._rebuild_menu()
+            self._flash_overlay(mode)
+
+        self._dispatch_main(_update)
 
     def update_connection(self, is_connected: bool) -> None:
         """Reflect the controller connection state."""
-        self._is_connected = is_connected
-        self._update_title()
-        self._rebuild_menu()
+        def _update():
+            self._is_connected = is_connected
+            self._update_title()
+            self._rebuild_menu()
+
+        self._dispatch_main(_update)
 
     def _update_title(self) -> None:
         """Update title based on connection state (respects calibration overlay)."""
@@ -88,13 +103,19 @@ class MenuBarApp(rumps.App):
 
     def show_calibration_prompt(self, button_name: str) -> None:
         """Show calibration prompt in menu bar title."""
-        self._calibration_prompt = f"Press: {button_name}"
-        self._update_title()
+        def _update():
+            self._calibration_prompt = f"Press: {button_name}"
+            self._update_title()
+
+        self._dispatch_main(_update)
 
     def clear_calibration_prompt(self) -> None:
         """Clear calibration prompt from menu bar title."""
-        self._calibration_prompt = None
-        self._update_title()
+        def _update():
+            self._calibration_prompt = None
+            self._update_title()
+
+        self._dispatch_main(_update)
 
     # ------------------------------------------------------------------
     # rumps lifecycle
