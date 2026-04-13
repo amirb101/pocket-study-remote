@@ -38,13 +38,19 @@ from .routing.action_router import ActionRouter
 from .ui.menu_bar import MenuBarApp
 
 # ---------------------------------------------------------------------------
-# Logging
+# Logging (with forced flush so we see output before hangs)
 # ---------------------------------------------------------------------------
+
+class _FlushStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
 
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
+    handlers=[_FlushStreamHandler()],
 )
 logging.getLogger("pygame").setLevel(logging.WARNING)
 
@@ -173,11 +179,13 @@ def main() -> None:
         _start_connection_watcher(controller, app.update_connection)
         logger.info("Pocket Study Remote is running")
 
+    logger.info("main: creating MenuBarApp...")
     app = MenuBarApp(on_launch=on_launch)
 
     # Wire mode-change callback now that app exists.
     router._on_mode_changed = app.update_mode
 
+    logger.info("main: calling app.run() — rumps will take over the main thread")
     app.run()
 
 

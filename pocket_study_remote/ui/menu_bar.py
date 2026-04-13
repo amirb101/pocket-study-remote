@@ -37,6 +37,7 @@ class MenuBarApp(rumps.App):
     """
 
     def __init__(self, on_launch: "Callable[[], None]") -> None:  # noqa: F821
+        logger.info("MenuBarApp.__init__ starting")
         super().__init__(
             name="Pocket Study Remote",
             title=_ICON_DISCONNECTED,
@@ -48,6 +49,7 @@ class MenuBarApp(rumps.App):
         self._overlay_timer: rumps.Timer | None = None
 
         self._rebuild_menu()
+        logger.info("MenuBarApp.__init__ complete")
 
     # ------------------------------------------------------------------
     # Public updates (called from other threads — rumps is thread-safe
