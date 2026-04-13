@@ -47,9 +47,20 @@ class MenuBarApp(rumps.App):
         self._current_mode = "—"
         self._is_connected = False
         self._overlay_timer: rumps.Timer | None = None
+        self._launch_called = False
 
         self._rebuild_menu()
-        logger.info("MenuBarApp.__init__ complete")
+        # Fallback: if application_did_finish_launching never fires (rumps bug),
+        # force-start after 2s. Cancelled if real launch happens first.
+        self._fallback_timer = rumps.Timer(self._fallback_start, 2.0)
+        self._fallback_timer.start()
+        logger.info("MenuBarApp.__init__ complete (fallback timer armed)")
+
+    def _fallback_start(self, _timer) -> None:
+        """Emergency start if rumps never calls application_did_finish_launching."""
+        if not self._launch_called:
+            logger.warning("MenuBarApp: FALLBACK START — application_did_finish_launching never fired!")
+            self._start_controller()
 
     # ------------------------------------------------------------------
     # Public updates (called from other threads — rumps is thread-safe
@@ -75,6 +86,20 @@ class MenuBarApp(rumps.App):
     def application_did_finish_launching(self, notification) -> None:
         """Called by rumps after the AppKit run loop starts."""
         logger.info("MenuBarApp: application_did_finish_launching — starting controller")
+        self._start_controller()
+
+    def _start_controller(self) -> None:
+        """Initialize controller and detector — called from launch or fallback timer."""
+        if getattr(self, "_launch_called", False):
+            return
+        self._launch_called = True
+        # Cancel fallback timer if real launch happened
+        try:
+            if hasattr(self, "_fallback_timer") and self._fallback_timer:
+                self._fallback_timer.stop()
+        except Exception:
+            pass
+
         # GameController defaults to ignoring pads while this process is not key;
         # menu bar remotes must opt in or the controller appears "dead" in other apps.
         try:
