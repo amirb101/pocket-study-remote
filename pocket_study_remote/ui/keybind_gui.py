@@ -3,13 +3,9 @@
 Standalone keybinding GUI - runs in separate process to avoid thread conflicts.
 
 This file is launched as a subprocess so tkinter can run on its own main thread.
-Controller button capture works via IPC with the main app.
 """
 
-import json
 import sys
-import threading
-import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk, messagebox
@@ -22,7 +18,7 @@ from pocket_study_remote.core.gamepad_button import GamepadButton
 
 
 class KeybindGUI:
-    """GUI for editing keybindings with controller input capture."""
+    """GUI for editing keybindings."""
 
     def __init__(self):
         self.window = tk.Tk()
@@ -32,8 +28,6 @@ class KeybindGUI:
 
         # State
         self.button_vars = {}  # (mode_id, action_id) -> StringVar
-        self.combo_vars = {}   # (mode_id, action_id) -> BooleanVar
-        self.capturing = False
 
         self._build_ui()
         self._load_config()
@@ -52,8 +46,8 @@ class KeybindGUI:
         # Instructions
         self.instr_label = tk.Label(
             self.window,
-            text="Click 'Assign' next to an action, then press the button (or button combo) on your controller. "
-                 "Check 'Combo' if you want to assign multiple buttons pressed together.",
+            text="Select a button from the dropdown for each action you want to assign. "
+                 "Use the 'Clear' button to unassign an action.",
             wraplength=750,
             justify=tk.LEFT,
             padx=10,
@@ -62,7 +56,7 @@ class KeybindGUI:
         self.instr_label.pack(fill=tk.X)
 
         # Status bar
-        self.status_var = tk.StringVar(value="Ready - Click Assign to capture from controller")
+        self.status_var = tk.StringVar(value="Ready - Select buttons from dropdowns to assign")
         self.status_bar = tk.Label(
             self.window,
             textvariable=self.status_var,
@@ -173,58 +167,34 @@ class KeybindGUI:
         if mapping:
             var.set(self._format_mapping(mapping))
 
-        binding_label = tk.Label(
+        # Button dropdown
+        button_choices = ["Unassigned"] + [b.name for b in GamepadButton]
+        current = "Unassigned"
+        if mapping and mapping.button:
+            current = mapping.button.name
+
+        dropdown = ttk.Combobox(
             row,
             textvariable=var,
-            font=("Helvetica", 10, "bold"),
-            width=18,
-            relief=tk.SUNKEN,
-            bg="#ffffff",
-            fg="#333333",
-            cursor="hand2",
+            values=button_choices,
+            width=15,
+            state="readonly",
         )
-        binding_label.pack(side=tk.LEFT, padx=5)
-        binding_label.bind("<Button-1>", lambda e: self._start_capture(mode_id, action.id, action.name))
-
-        # Combo checkbox
-        combo_var = tk.BooleanVar(value=False)
-        self.combo_vars[(mode_id, action.id)] = combo_var
-        
-        if mapping and mapping.input_type == InputType.COMBO:
-            combo_var.set(True)
-
-        combo_check = tk.Checkbutton(
-            row,
-            text="Combo",
-            variable=combo_var,
-        )
-        combo_check.pack(side=tk.LEFT, padx=2)
-
-        # Assign button
-        assign_btn = tk.Button(
-            row,
-            text="Assign",
-            command=lambda: self._start_capture(mode_id, action.id, action.name),
-            bg="#1976D2",
-            fg="white",
-            font=("Helvetica", 9, "bold"),
-            relief=tk.RAISED,
-            padx=8,
-            pady=2,
-        )
-        assign_btn.pack(side=tk.LEFT, padx=3)
+        dropdown.set(current)
+        dropdown.pack(side=tk.LEFT, padx=5)
+        dropdown.bind("<<ComboboxSelected>>", lambda e: self._on_button_selected(mode_id, action.id, var.get()))
 
         # Clear button
         clear_btn = tk.Button(
             row,
             text="Clear",
-            command=lambda: self._clear_assignment(mode_id, action.id, var, combo_var),
-            bg="#757575",
+            command=lambda: self._clear_assignment(mode_id, action.id, var),
+            bg="#555555",
             fg="white",
             font=("Helvetica", 9),
             relief=tk.RAISED,
-            padx=8,
-            pady=2,
+            padx=10,
+            pady=3,
         )
         clear_btn.pack(side=tk.LEFT, padx=3)
 
@@ -239,143 +209,33 @@ class KeybindGUI:
             return f"{mapping.button.display_name} (hold)"
         return "Unassigned"
 
-    def _start_capture(self, mode_id: str, action_id: str, action_name: str):
-        """Start capturing button input from controller using pygame."""
-        if self.capturing:
-            messagebox.showwarning("Already Capturing", "Already waiting for button press. Press a button or wait to cancel.")
-            return
-
-        self.capturing = True
-        
-        # Check combo mode
-        is_combo = self.combo_vars[(mode_id, action_id)].get()
-        
-        self.status_var.set(f"CAPTURING: Press button{' COMBO' if is_combo else ''} on controller for: {action_name}")
-        self.status_bar.configure(bg="#FFF3CD")
-        self.instr_label.configure(text=f"Press any button on your controller now...\n(Combo mode: {is_combo})")
-
-        # Start polling thread with pygame
-        self.capture_thread = threading.Thread(
-            target=self._poll_for_capture,
-            args=(mode_id, action_id, is_combo),
-            daemon=True
-        )
-        self.capture_thread.start()
-
-    def _poll_for_capture(self, mode_id: str, action_id: str, is_combo: bool):
-        """Poll for captured button using pygame/SDL directly in this process."""
-        try:
-            import pygame
-            
-            # Initialize pygame joystick
-            pygame.init()
-            pygame.joystick.init()
-            
-            # Wait for joystick
-            joystick = None
-            start_time = time.time()
-            
-            while time.time() - start_time < 30.0 and not joystick:
-                pygame.joystick.init()
-                if pygame.joystick.get_count() > 0:
-                    joystick = pygame.joystick.Joystick(0)
-                    joystick.init()
-                    break
-                time.sleep(0.1)
-            
-            if not joystick:
-                # No joystick found
-                self.window.after(0, self._capture_timeout)
-                return
-            
-            # Poll for button press
-            captured_button = None
-            start_time = time.time()
-            
-            while time.time() - start_time < 30.0 and not captured_button:
-                for event in pygame.event.get():
-                    if event.type == pygame.JOYBUTTONDOWN:
-                        # Map button index to GamepadButton
-                        button_map = [
-                            "A", "B", "X", "Y",  # 0,1,2,3
-                            "LEFT_SHOULDER", "RIGHT_SHOULDER",  # 4,5
-                            "LEFT_TRIGGER", "RIGHT_TRIGGER",  # 6,7
-                            "SELECT", "START",  # 8,9
-                        ]
-                        if event.button < len(button_map):
-                            captured_button = button_map[event.button]
-                            break
-                
-                time.sleep(0.016)  # ~60Hz
-            
-            pygame.quit()
-            
-            if captured_button:
-                self.window.after(0, lambda: self._apply_capture(mode_id, action_id, captured_button, is_combo))
-            else:
-                self.window.after(0, self._capture_timeout)
-                
-        except Exception as e:
-            print(f"Capture error: {e}")
-            self.window.after(0, self._capture_timeout)
-        finally:
-            self.capturing = False
-            try:
-                pygame.quit()
-            except:
-                pass
-
-    def _apply_capture(self, mode_id: str, action_id: str, button_name: str, is_combo: bool):
-        """Apply the captured button to the action."""
+    def _on_button_selected(self, mode_id: str, action_id: str, button_name: str):
+        """Handle button selection from dropdown."""
         config = get_config()
         mode_config = config.get_mode(mode_id)
         if not mode_config:
             return
 
-        button = GamepadButton[button_name]
-        
-        if is_combo:
-            # For combo, we need to capture a second button
-            # For now, just make it a simple combo with A as primary
-            mapping = KeybindMapping(
-                action_id=action_id,
-                input_type=InputType.COMBO,
-                primary_button=button,
-                held_buttons=[GamepadButton.A],  # Default combo partner
-            )
+        if button_name == "Unassigned":
+            mode_config.remove_mapping(action_id)
+            self.status_var.set(f"Cleared assignment for {action_id}")
         else:
+            button = GamepadButton[button_name]
             mapping = KeybindMapping(
                 action_id=action_id,
                 input_type=InputType.SIMPLE,
                 button=button,
             )
-        
-        mode_config.set_mapping(mapping)
-        
-        # Update display
-        display_text = self._format_mapping(mapping)
-        self.button_vars[(mode_id, action_id)].set(display_text)
-        
-        self.status_var.set(f"Assigned {button_name} to {action_id}")
-        self.status_bar.configure(bg="#D4EDDA")
-        self.instr_label.configure(text="Click 'Assign' next to an action, then press the button on your controller.")
-        
-        messagebox.showinfo("Button Captured", f"Assigned: {display_text}")
+            mode_config.set_mapping(mapping)
+            self.status_var.set(f"Assigned {button.name} to {action_id}")
 
-    def _capture_timeout(self):
-        """Handle capture timeout."""
-        self.status_var.set("Capture timed out - no button pressed")
-        self.status_bar.configure(bg="#f0f0f0")
-        self.instr_label.configure(text="Click 'Assign' next to an action, then press the button on your controller.")
-
-    def _clear_assignment(self, mode_id: str, action_id: str, var, combo_var):
+    def _clear_assignment(self, mode_id: str, action_id: str, var):
         """Clear a button assignment."""
         config = get_config()
         mode_config = config.get_mode(mode_id)
         if mode_config:
-            mode_config.clear_mapping(action_id)
+            mode_config.remove_mapping(action_id)
             var.set("Unassigned")
-            combo_var.set(False)
             self.status_var.set(f"Cleared binding for {action_id}")
             self.status_bar.configure(bg="#f0f0f0")
 
@@ -394,21 +254,16 @@ class KeybindGUI:
                 if mode_config:
                     mapping = mode_config.get_mapping_for_action(action_id)
                     var.set(self._format_mapping(mapping) if mapping else "Unassigned")
-            # Reset combo checkboxes
-            for var in self.combo_vars.values():
-                var.set(False)
             self.status_var.set("Reset to defaults")
 
     def _save_and_close(self):
         """Save and close."""
-        stop_listening()
         config = get_config()
         config._save()
         self.window.destroy()
 
     def _cancel(self):
         """Cancel without saving."""
-        stop_listening()
         self.window.destroy()
 
     def run(self):
@@ -423,22 +278,6 @@ if __name__ == "__main__":
     if not config_path.exists():
         config_path.parent.mkdir(parents=True, exist_ok=True)
         get_config()
-
-    # Check if pygame is available
-    try:
-        import pygame
-    except ImportError:
-        import tkinter as tk
-        from tkinter import messagebox
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showerror(
-            "Missing Dependency",
-            "pygame is required for controller input capture.\n\n"
-            "Install with: pip install pygame"
-        )
-        root.destroy()
-        sys.exit(1)
 
     gui = KeybindGUI()
     gui.run()

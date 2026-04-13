@@ -1,208 +1,142 @@
-"""
-Pocket Study Remote — entry point and dependency wiring.
-
-Run with:
-    python -m pocket_study_remote
-
-This file creates every component, wires them together via callbacks,
-and hands control to the rumps run loop (which owns the AppKit main thread).
-
-Component graph
-───────────────
-main.py
-├── ModeRegistry        — maps bundle IDs → modes
-├── ActionRouter        — button + app-change → action dispatch
-├── Controller backend  — macOS: GameController; else pygame (background thread)
-├── AppDetector         — NSWorkspace polling (background thread)
-└── MenuBarApp          — rumps status bar + AppKit run loop (main thread)
-"""
+"""Main entry point for Pocket Study Remote."""
 
 from __future__ import annotations
 
 import logging
-import os
 import sys
-import threading
-import time
-from typing import Callable, Protocol
+from typing import Any
 
 from .constants import BundleID
 from .controller.controller_manager import ControllerManager
 from .core.mode_registry import ModeRegistry
 from .detection.app_detector import AppDetector
+from .modes.apple_music_mode import AppleMusicMode
 from .modes.browser_mode import BrowserMode
+from .modes.finder_mode import FinderMode
 from .modes.global_mode import GlobalMode
+from .modes.messages_mode import MessagesMode
+from .modes.notion_mode import NotionMode
 from .modes.obsidian_mode import ObsidianMode
+from .modes.preview_mode import PreviewMode
 from .modes.spotify_mode import SpotifyMode
+from .modes.vscode_mode import VSCodeMode
+from .modes.whatsapp_mode import WhatsAppMode
 from .routing.action_router import ActionRouter
 from .ui.menu_bar import MenuBarApp
 
-# ---------------------------------------------------------------------------
-# Logging (with forced flush so we see output before hangs)
-# ---------------------------------------------------------------------------
-
-class _FlushStreamHandler(logging.StreamHandler):
-    def emit(self, record):
-        super().emit(record)
-        self.flush()
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[_FlushStreamHandler()],
-)
-logging.getLogger("pygame").setLevel(logging.WARNING)
+# Global references for cross-module access
+controller: Any = None
+app: Any = None
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Accessibility check
-# ---------------------------------------------------------------------------
+def _setup_logging() -> None:
+    """Configure logging for the application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
 
-def _check_accessibility() -> None:
-    """Warn early if Accessibility permission is missing."""
-    exe = os.path.realpath(sys.executable)
-    logger.info("Accessibility: add this binary if keystrokes fail → %s", exe)
+
+def _check_accessibility() -> bool:
+    """Check if the app has accessibility permissions."""
     try:
-        from ApplicationServices import AXIsProcessTrusted  # type: ignore[import]
-        if not AXIsProcessTrusted():
-            logger.warning(
-                "Accessibility permission not granted — keystrokes will not fire.\n"
-                "System Settings → Privacy & Security → Accessibility → + → choose:\n"
-                "  %s\n"
-                "(For a venv, that is usually .venv/bin/python3 after realpath.)",
-                exe,
-            )
-    except ImportError:
-        pass
+        from ApplicationServices import AXIsProcessTrusted
+        trusted = AXIsProcessTrusted()
+        if not trusted:
+            logger.warning("Accessibility permissions not granted")
+        return trusted
+    except Exception as e:
+        logger.error("Failed to check accessibility: %s", e)
+        return False
 
-
-class _ControllerBackend(Protocol):
-    @property
-    def is_connected(self) -> bool: ...
-
-    def start(self) -> None: ...
-
-
-def _make_controller(router: ActionRouter) -> _ControllerBackend:
-    """
-    On macOS, prefer Apple's GameController API so Bluetooth pads work without SDL.
-    Fall back to pygame if PyObjC or the framework is unavailable.
-    """
-    if sys.platform == "darwin":
-        try:
-            from .controller.apple_gc_input import AppleGCControllerInput
-
-            logger.info(
-                "Controller backend: Apple GameController (poll starts after menu bar loads)"
-            )
-            # Create controller with wrapped callback for calibration
-            controller = AppleGCControllerInput(on_button_change=None)
-
-            def calibrated_callback(button, is_pressed):
-                # Pass through calibration if active
-                if controller.on_button_event_for_calibration(str(button), is_pressed):
-                    return  # Calibration consumed this event
-                router.button_changed(button, is_pressed)
-
-            # Set the callback on the controller
-            controller._cb = calibrated_callback
-            return controller
-        except Exception as e:
-            logger.warning(
-                "GameController backend unavailable (%s); falling back to pygame/SDL",
-                e,
-            )
-            logger.info("Controller backend: pygame/SDL (macOS fallback)")
-            return ControllerManager(on_button_change=router.button_changed)
-    logger.info("Controller backend: pygame/SDL (non-macOS)")
-    return ControllerManager(on_button_change=router.button_changed)
-
-
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
 
 def _build_registry() -> ModeRegistry:
     """
     Populate the mode registry.
 
-    To add a new mode:
+    To add support for a new app:
     1. Create a new AppMode subclass in modes/
-    2. Add its bundle ID(s) to constants.py
-    3. Add one register() call here — nothing else changes.
+    2. Import it here
+    3. Add register() call with the app's bundle ID(s)
     """
     registry = ModeRegistry(fallback=GlobalMode())
-    registry.register(SpotifyMode(),  bundle_ids=[BundleID.SPOTIFY])
-    registry.register(BrowserMode(),  bundle_ids=BundleID.CHROMIUM_BROWSERS)
+
+    # Media
+    registry.register(SpotifyMode(), bundle_ids=[BundleID.SPOTIFY])
+    registry.register(AppleMusicMode(), bundle_ids=[BundleID.APPLE_MUSIC])
+
+    # Browsers
+    registry.register(BrowserMode(), bundle_ids=BundleID.ALL_BROWSERS)
+
+    # Productivity
     registry.register(ObsidianMode(), bundle_ids=[BundleID.OBSIDIAN])
+    registry.register(NotionMode(), bundle_ids=[BundleID.NOTION])
+
+    # System apps
+    registry.register(FinderMode(), bundle_ids=[BundleID.FINDER])
+    registry.register(PreviewMode(), bundle_ids=[BundleID.PREVIEW])
+
+    # Development
+    registry.register(VSCodeMode(), bundle_ids=[BundleID.VS_CODE, BundleID.CURSOR])
+
+    # Communication
+    registry.register(MessagesMode(), bundle_ids=[BundleID.MESSAGES])
+    registry.register(WhatsAppMode(), bundle_ids=[BundleID.WHATSAPP])
+
     return registry
 
 
-# ---------------------------------------------------------------------------
-# Connection watcher
-# ---------------------------------------------------------------------------
+def _make_controller(router: ActionRouter) -> ControllerManager:
+    """Create and configure the controller manager."""
+    mgr = ControllerManager()
 
-def _start_connection_watcher(
-    controller: _ControllerBackend,
-    on_change: Callable[[bool], None],
-) -> None:
-    """
-    Polls controller.is_connected once per second and fires
-    ``on_change`` whenever the state flips.
-    """
-    def _watch() -> None:
-        last_state: bool | None = None
-        while True:
-            current = controller.is_connected
-            if current != last_state:
-                on_change(current)
-                last_state = current
-            time.sleep(1.0)
+    def on_button_press(button):
+        router.on_button_press(button)
 
-    threading.Thread(target=_watch, daemon=True, name="ConnectionWatcher").start()
+    def on_button_release(button):
+        router.on_button_release(button)
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-# Global references for cross-module access
-controller: _ControllerBackend | None = None
-app: MenuBarApp | None = None
+    mgr.on_button_press = on_button_press
+    mgr.on_button_release = on_button_release
+    return mgr
 
 
 def main() -> None:
+    """Run the application."""
     global controller, app
+
+    _setup_logging()
     _check_accessibility()
 
-    registry   = _build_registry()
-    router     = ActionRouter(registry=registry)
+    # Build mode registry
+    registry = _build_registry()
+
+    # Create action router
+    router = ActionRouter(registry=registry)
+
+    # Create controller manager
     controller = _make_controller(router)
-    detector   = AppDetector(on_app_change=router.update_mode)
+
+    # Create app detector
+    detector = AppDetector(on_app_change=router.update_mode)
 
     def on_launch() -> None:
-        """Called by rumps after the AppKit run loop starts."""
-        logger.info("on_launch: starting controller...")
-        try:
-            controller.start()
-        except Exception as e:
-            logger.exception("on_launch: controller.start() failed: %s", e)
-            raise
-        logger.info("on_launch: controller started, starting detector...")
+        """Called when menu bar app launches."""
+        logger.info("Starting controller and detector...")
+        controller.start()
         detector.start()
-        _start_connection_watcher(controller, app.update_connection)
-        logger.info("Pocket Study Remote is running")
 
-    logger.info("main: creating MenuBarApp...")
-    app = MenuBarApp(on_launch=on_launch)  # noqa: F841 - used via global
+    # Create and run menu bar app
+    logger.info("Creating MenuBarApp...")
+    app = MenuBarApp(on_launch=on_launch)
 
-    # Wire mode-change callback now that app exists.
-    router._on_mode_changed = app.update_mode
-
-    logger.info("main: calling app.run() — rumps will take over the main thread")
+    # Store references for external access (e.g., calibration)
+    logger.info("Starting main loop...")
     app.run()
 
 

@@ -104,6 +104,19 @@ class BundleID:
     """
     SPOTIFY  = "com.spotify.client"
     OBSIDIAN = "md.obsidian"
+    
+    # Productivity apps
+    APPLE_MUSIC = "com.apple.Music"
+    FINDER = "com.apple.finder"
+    PREVIEW = "com.apple.Preview"
+    
+    # Development
+    VS_CODE = "com.microsoft.VSCode"
+    CURSOR = "com.todesktop.230313mzl4w4u92"  # Cursor IDE
+    
+    # Productivity
+    NOTION = "notion.id"
+    FIGMA = "com.figma.Desktop"
 
     # Browser bundle IDs (most share standard macOS shortcuts)
     CHROME   = "com.google.Chrome"

@@ -1,333 +1,414 @@
 """
-Keybinding configuration management.
+Configuration management for keybindings.
 
-Stores per-mode button mappings in JSON, supports simple presses,
-combinations (A+B), and long presses (hold 0.5s).
+Loads and saves keybinding configurations, and provides default keybindings
+for all modes.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import time
 from dataclasses import dataclass, field, asdict
-from enum import Enum
 from pathlib import Path
-from typing import Callable
-
-from ..core.gamepad_button import GamepadButton
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-
-class InputType(Enum):
-    """Types of controller input."""
-    SIMPLE = "simple"          # Just press the button
-    COMBO = "combo"            # Press A while holding B
-    LONG_PRESS = "long_press"  # Hold for 0.5s
+# Controller button names
+CONTROLLER_BUTTONS = [
+    "A", "B", "X", "Y",
+    "L1", "R1", "L2", "R2",
+    "SELECT", "START",
+    "D_UP", "D_DOWN", "D_LEFT", "D_RIGHT",
+]
 
 
 @dataclass
 class KeybindAction:
-    """A configurable action that can be bound to controller input."""
-    id: str
-    name: str
-    description: str
-    default_button: GamepadButton | None = None
-    default_combo: list[GamepadButton] | None = None
-
-
-@dataclass
-class KeybindMapping:
-    """A single mapping from controller input to an action."""
+    """Represents a single configurable action."""
     action_id: str
-    input_type: InputType
-    # For simple: just the button
-    button: GamepadButton | None = None
-    # For combo: primary button + held buttons
-    primary_button: GamepadButton | None = None
-    held_buttons: list[GamepadButton] = field(default_factory=list)
-    # For long press: the button and duration
-    duration_ms: int = 500
-
-    def to_dict(self) -> dict:
-        return {
-            "action_id": self.action_id,
-            "input_type": self.input_type.value,
-            "button": self.button.name if self.button else None,
-            "primary_button": self.primary_button.name if self.primary_button else None,
-            "held_buttons": [b.name for b in self.held_buttons],
-            "duration_ms": self.duration_ms,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> KeybindMapping:
-        return cls(
-            action_id=data["action_id"],
-            input_type=InputType(data["input_type"]),
-            button=GamepadButton[data["button"]] if data.get("button") else None,
-            primary_button=GamepadButton[data["primary_button"]] if data.get("primary_button") else None,
-            held_buttons=[GamepadButton[b] for b in data.get("held_buttons", [])],
-            duration_ms=data.get("duration_ms", 500),
-        )
+    display_name: str
+    description: str
+    default_button: str | None = None
+    is_combo: bool = False  # Whether this action can use combo (button + modifier)
 
 
 @dataclass
 class ModeConfig:
-    """Configuration for a single mode (browser, spotify, etc.)."""
+    """Configuration for a single mode."""
     mode_id: str
-    mode_name: str
-    actions: list[KeybindAction] = field(default_factory=list)
-    mappings: list[KeybindMapping] = field(default_factory=list)
+    display_name: str
+    actions: List[KeybindAction] = field(default_factory=list)
+    button_map: Dict[str, str] = field(default_factory=dict)  # button -> action_id
+    combo_map: Dict[str, str] = field(default_factory=dict)    # button+modifier -> action_id
 
-    def get_mapping_for_action(self, action_id: str) -> KeybindMapping | None:
-        """Get the mapping for a specific action."""
-        for m in self.mappings:
-            if m.action_id == action_id:
-                return m
-        return None
+    def get_action_for_button(self, button: str, is_combo: bool = False) -> str | None:
+        """Get action ID for a button press."""
+        mapping = self.combo_map if is_combo else self.button_map
+        return mapping.get(button)
 
-    def get_action_by_id(self, action_id: str) -> KeybindAction | None:
-        """Get action definition by ID."""
-        for a in self.actions:
-            if a.id == action_id:
-                return a
-        return None
+    def set_mapping(self, button: str, action_id: str | None, is_combo: bool = False) -> None:
+        """Set or clear a button mapping."""
+        mapping = self.combo_map if is_combo else self.button_map
+        if action_id:
+            mapping[button] = action_id
+        else:
+            mapping.pop(button, None)
 
-    def set_mapping(self, mapping: KeybindMapping) -> None:
-        """Set or replace a mapping."""
-        # Remove existing mapping for this action
-        self.mappings = [m for m in self.mappings if m.action_id != mapping.action_id]
-        self.mappings.append(mapping)
-
-    def clear_mapping(self, action_id: str) -> None:
-        """Remove a mapping."""
-        self.mappings = [m for m in self.mappings if m.action_id != action_id]
-
-    def to_dict(self) -> dict:
-        return {
-            "mode_id": self.mode_id,
-            "mode_name": self.mode_name,
-            "actions": [
-                {
-                    "id": a.id,
-                    "name": a.name,
-                    "description": a.description,
-                    "default_button": a.default_button.name if a.default_button else None,
-                }
-                for a in self.actions
-            ],
-            "mappings": [m.to_dict() for m in self.mappings],
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> ModeConfig:
-        actions = [
-            KeybindAction(
-                id=a["id"],
-                name=a["name"],
-                description=a["description"],
-                default_button=GamepadButton[a["default_button"]] if a.get("default_button") else None,
-            )
-            for a in data.get("actions", [])
-        ]
-        mappings = [KeybindMapping.from_dict(m) for m in data.get("mappings", [])]
-        return cls(
-            mode_id=data["mode_id"],
-            mode_name=data["mode_name"],
-            actions=actions,
-            mappings=mappings,
-        )
+    def clear_mapping(self, button: str, is_combo: bool = False) -> None:
+        """Clear a button mapping."""
+        mapping = self.combo_map if is_combo else self.button_map
+        mapping.pop(button, None)
 
 
 class KeybindConfig:
-    """Manages all keybinding configuration."""
+    """Manages keybinding configurations for all modes."""
 
-    CONFIG_PATH = Path.home() / ".config" / "pocket-study-remote" / "keybindings.json"
+    CONFIG_FILE = Path.home() / ".pocket_study_remote" / "keybindings.json"
 
     def __init__(self) -> None:
-        self.modes: dict[str, ModeConfig] = {}
+        self.modes: Dict[str, ModeConfig] = {}
+        self._create_defaults()
         self._load()
 
-    def _load(self) -> None:
-        """Load configuration from disk or create defaults."""
-        if self.CONFIG_PATH.exists():
-            try:
-                with open(self.CONFIG_PATH, "r") as f:
-                    data = json.load(f)
-                for mode_data in data.get("modes", []):
-                    mode = ModeConfig.from_dict(mode_data)
-                    self.modes[mode.mode_id] = mode
-                logger.info("Loaded keybindings from %s", self.CONFIG_PATH)
-            except Exception as e:
-                logger.warning("Failed to load keybindings: %s", e)
-                self._create_defaults()
-        else:
-            self._create_defaults()
-
     def _create_defaults(self) -> None:
-        """Create default keybinding configuration."""
-        from ..modes.browser_mode import BrowserMode
-        from ..modes.spotify_mode import SpotifyMode
-        from ..modes.global_mode import GlobalMode
-
-        # Browser mode defaults
-        browser = ModeConfig(
+        """Create default configurations for all modes."""
+        # Browser Mode
+        self.modes["browser"] = ModeConfig(
             mode_id="browser",
-            mode_name="Browser",
+            display_name="Browser",
             actions=[
-                KeybindAction("new_tab", "New Tab", "Open a new tab", GamepadButton.A),
-                KeybindAction("go_back", "Go Back", "Navigate back", GamepadButton.B),
-                KeybindAction("close_tab", "Close Tab", "Close current tab", GamepadButton.X),
-                KeybindAction("reopen_tab", "Reopen Tab", "Reopen closed tab", GamepadButton.Y),
-                KeybindAction("page_back", "Page Back", "Go back in history", GamepadButton.DPAD_LEFT),
-                KeybindAction("page_forward", "Page Forward", "Go forward in history", GamepadButton.DPAD_RIGHT),
-                KeybindAction("scroll_up", "Scroll Up", "Scroll page up", GamepadButton.DPAD_UP),
-                KeybindAction("scroll_down", "Scroll Down", "Scroll page down", GamepadButton.DPAD_DOWN),
-                KeybindAction("prev_tab", "Previous Tab", "Switch to previous tab", GamepadButton.LEFT_SHOULDER),
-                KeybindAction("next_tab", "Next Tab", "Switch to next tab", GamepadButton.RIGHT_SHOULDER),
-                KeybindAction("new_window", "New Window", "Open new browser window", GamepadButton.LEFT_TRIGGER),
-                KeybindAction("tab_search", "Search Tabs", "Search open tabs", GamepadButton.RIGHT_TRIGGER),
-                KeybindAction("focus_address", "Focus Address Bar", "Focus the URL bar", GamepadButton.START),
-                KeybindAction("bookmark", "Bookmark Page", "Bookmark current page", None),  # Combo only
+                KeybindAction("new_tab", "New Tab", "Open a new browser tab", "Y"),
+                KeybindAction("close_tab", "Close Tab", "Close the current tab", "X"),
+                KeybindAction("reopen_tab", "Reopen Tab", "Reopen closed tab", "A", is_combo=True),
+                KeybindAction("page_back", "Page Back", "Navigate back", "L1"),
+                KeybindAction("page_forward", "Page Forward", "Navigate forward", "R1"),
+                KeybindAction("prev_tab", "Previous Tab", "Switch to previous tab", "L2"),
+                KeybindAction("next_tab", "Next Tab", "Switch to next tab", "R2"),
+                KeybindAction("focus_address", "Focus Address", "Focus address bar", "SELECT"),
+                KeybindAction("bookmark", "Bookmark", "Bookmark current page", "START"),
             ],
+            button_map={
+                "Y": "new_tab",
+                "X": "close_tab",
+                "L1": "page_back",
+                "R1": "page_forward",
+                "L2": "prev_tab",
+                "R2": "next_tab",
+                "SELECT": "focus_address",
+                "START": "bookmark",
+            },
+            combo_map={
+                "A": "reopen_tab",
+            },
         )
-        # Set default combo for bookmark
-        browser.set_mapping(KeybindMapping(
-            action_id="bookmark",
-            input_type=InputType.COMBO,
-            primary_button=GamepadButton.B,
-            held_buttons=[GamepadButton.A],
-        ))
-        # Set simple button defaults
-        for action in browser.actions:
-            if action.default_button and action.id != "bookmark":
-                browser.set_mapping(KeybindMapping(
-                    action_id=action.id,
-                    input_type=InputType.SIMPLE,
-                    button=action.default_button,
-                ))
-        self.modes["browser"] = browser
 
-        # Spotify mode defaults
-        spotify = ModeConfig(
+        # Spotify Mode
+        self.modes["spotify"] = ModeConfig(
             mode_id="spotify",
-            mode_name="Spotify",
+            display_name="Spotify",
             actions=[
-                KeybindAction("play_pause", "Play/Pause", "Toggle playback", GamepadButton.A),
-                KeybindAction("next_track", "Next Track", "Skip to next song", GamepadButton.RIGHT_SHOULDER),
-                KeybindAction("prev_track", "Previous Track", "Go to previous song", GamepadButton.LEFT_SHOULDER),
-                KeybindAction("volume_up", "Volume Up", "Increase volume", GamepadButton.DPAD_UP),
-                KeybindAction("volume_down", "Volume Down", "Decrease volume", GamepadButton.DPAD_DOWN),
-                KeybindAction("seek_forward", "Seek Forward", "Skip ahead in track", GamepadButton.DPAD_RIGHT),
-                KeybindAction("seek_backward", "Seek Backward", "Skip back in track", GamepadButton.DPAD_LEFT),
-                KeybindAction("shuffle", "Toggle Shuffle", "Toggle shuffle mode", GamepadButton.X),
-                KeybindAction("like", "Like Song", "Save/like current song", GamepadButton.Y),
+                KeybindAction("play_pause", "Play/Pause", "Toggle playback", "A"),
+                KeybindAction("next_track", "Next Track", "Skip to next track", "R1"),
+                KeybindAction("prev_track", "Previous Track", "Go to previous track", "L1"),
+                KeybindAction("volume_up", "Volume Up", "Increase volume", "R2"),
+                KeybindAction("volume_down", "Volume Down", "Decrease volume", "L2"),
+                KeybindAction("shuffle", "Shuffle", "Toggle shuffle", "X"),
+                KeybindAction("like", "Like Song", "Save/like current song", "Y"),
             ],
+            button_map={
+                "A": "play_pause",
+                "R1": "next_track",
+                "L1": "prev_track",
+                "R2": "volume_up",
+                "L2": "volume_down",
+                "X": "shuffle",
+                "Y": "like",
+            },
         )
-        for action in spotify.actions:
-            if action.default_button:
-                spotify.set_mapping(KeybindMapping(
-                    action_id=action.id,
-                    input_type=InputType.SIMPLE,
-                    button=action.default_button,
-                ))
-        self.modes["spotify"] = spotify
 
-        # Global mode defaults
-        global_mode = ModeConfig(
-            mode_id="global",
-            mode_name="Global",
-            actions=[
-                KeybindAction("play_pause", "Play/Pause", "Toggle media playback", GamepadButton.A),
-                KeybindAction("next_track", "Next Track", "Next media track", GamepadButton.RIGHT_SHOULDER),
-                KeybindAction("prev_track", "Previous Track", "Previous media track", GamepadButton.LEFT_SHOULDER),
-                KeybindAction("volume_up", "Volume Up", "Increase system volume", GamepadButton.DPAD_UP),
-                KeybindAction("volume_down", "Volume Down", "Decrease system volume", GamepadButton.DPAD_DOWN),
-                KeybindAction("mute", "Mute", "Toggle mute", GamepadButton.B),
-                KeybindAction("screenshot", "Screenshot", "Take screenshot", GamepadButton.Y),
-                KeybindAction("mission_control", "Mission Control", "Show all windows", GamepadButton.LEFT_TRIGGER),
-                KeybindAction("spotlight", "Spotlight", "Open Spotlight search", GamepadButton.RIGHT_TRIGGER),
-                KeybindAction("lock_screen", "Lock Screen", "Lock the screen", GamepadButton.START),
-            ],
-        )
-        for action in global_mode.actions:
-            if action.default_button:
-                global_mode.set_mapping(KeybindMapping(
-                    action_id=action.id,
-                    input_type=InputType.SIMPLE,
-                    button=action.default_button,
-                ))
-        self.modes["global"] = global_mode
-
-        # Obsidian mode defaults
-        obsidian = ModeConfig(
+        # Obsidian Mode
+        self.modes["obsidian"] = ModeConfig(
             mode_id="obsidian",
-            mode_name="Obsidian",
+            display_name="Obsidian",
             actions=[
-                KeybindAction("command_palette", "Command Palette", "Open command palette", GamepadButton.A),
-                KeybindAction("quick_switcher", "Quick Switcher", "Jump between notes", GamepadButton.B),
-                KeybindAction("daily_note", "Daily Note", "Open today's daily note", GamepadButton.X),
-                KeybindAction("toggle_checklist", "Toggle Checklist", "Toggle checklist status", GamepadButton.Y),
-                KeybindAction("navigate_back", "Navigate Back", "Go back in note history", GamepadButton.DPAD_LEFT),
-                KeybindAction("navigate_forward", "Navigate Forward", "Go forward in note history", GamepadButton.DPAD_RIGHT),
-                KeybindAction("toggle_sidebar", "Toggle Sidebar", "Toggle left sidebar", GamepadButton.LEFT_SHOULDER),
-                KeybindAction("search_all", "Search All", "Search all files", GamepadButton.RIGHT_SHOULDER),
-                KeybindAction("insert_template", "Insert Template", "Insert template", GamepadButton.LEFT_TRIGGER),
-                KeybindAction("graph_view", "Graph View", "Open graph view", GamepadButton.RIGHT_TRIGGER),
-                KeybindAction("new_note", "New Note", "Create new note", GamepadButton.START),
-                KeybindAction("search", "Search", "Search current file", GamepadButton.SELECT),
+                KeybindAction("command_palette", "Command Palette", "Open command palette", "Y"),
+                KeybindAction("quick_switcher", "Quick Switcher", "Switch between notes", "A"),
+                KeybindAction("daily_note", "Daily Note", "Open today's note", "X"),
+                KeybindAction("new_note", "New Note", "Create new note", "B"),
+                KeybindAction("graph_view", "Graph View", "Open graph view", "SELECT"),
+                KeybindAction("search", "Search", "Search vault", "START"),
+                KeybindAction("back", "Back", "Navigate back", "L1"),
+                KeybindAction("forward", "Forward", "Navigate forward", "R1"),
             ],
+            button_map={
+                "Y": "command_palette",
+                "A": "quick_switcher",
+                "X": "daily_note",
+                "B": "new_note",
+                "SELECT": "graph_view",
+                "START": "search",
+                "L1": "back",
+                "R1": "forward",
+            },
         )
-        for action in obsidian.actions:
-            if action.default_button:
-                obsidian.set_mapping(KeybindMapping(
-                    action_id=action.id,
-                    input_type=InputType.SIMPLE,
-                    button=action.default_button,
-                ))
-        self.modes["obsidian"] = obsidian
 
-        self._save()
-        logger.info("Created default keybindings")
+        # Global Mode
+        self.modes["global"] = ModeConfig(
+            mode_id="global",
+            display_name="Global",
+            actions=[
+                KeybindAction("play_pause", "Play/Pause", "Global play/pause", "A"),
+                KeybindAction("next_track", "Next Track", "Global next track", "R1"),
+                KeybindAction("prev_track", "Previous Track", "Global previous track", "L1"),
+                KeybindAction("volume_up", "Volume Up", "Global volume up", "R2"),
+                KeybindAction("volume_down", "Volume Down", "Global volume down", "L2"),
+                KeybindAction("mission_control", "Mission Control", "Open Mission Control", "SELECT"),
+                KeybindAction("spotlight", "Spotlight", "Open Spotlight", "START"),
+                KeybindAction("lock_screen", "Lock Screen", "Lock the screen", "Y", is_combo=True),
+            ],
+            button_map={
+                "A": "play_pause",
+                "R1": "next_track",
+                "L1": "prev_track",
+                "R2": "volume_up",
+                "L2": "volume_down",
+                "SELECT": "mission_control",
+                "START": "spotlight",
+            },
+            combo_map={
+                "Y": "lock_screen",
+            },
+        )
 
-    def _save(self) -> None:
+        # Finder Mode
+        self.modes["finder"] = ModeConfig(
+            mode_id="finder",
+            display_name="Finder",
+            actions=[
+                KeybindAction("new_folder", "New Folder", "Create new folder", "N"),
+                KeybindAction("quick_look", "Quick Look", "Quick look selected item", "Y"),
+                KeybindAction("get_info", "Get Info", "Show file info", "I"),
+                KeybindAction("search", "Search", "Search in Finder", "F"),
+                KeybindAction("go_back", "Go Back", "Navigate back", "L1"),
+                KeybindAction("go_forward", "Go Forward", "Navigate forward", "R1"),
+                KeybindAction("trash", "Move to Trash", "Move selected to trash", "DELETE"),
+            ],
+            button_map={
+                "Y": "quick_look",
+                "L1": "go_back",
+                "R1": "go_forward",
+            },
+        )
+
+        # Apple Music Mode
+        self.modes["apple_music"] = ModeConfig(
+            mode_id="apple_music",
+            display_name="Apple Music",
+            actions=[
+                KeybindAction("play_pause", "Play/Pause", "Toggle playback", "A"),
+                KeybindAction("next_track", "Next Track", "Skip to next track", "R1"),
+                KeybindAction("prev_track", "Previous Track", "Go to previous track", "L1"),
+                KeybindAction("volume_up", "Volume Up", "Increase volume", "R2"),
+                KeybindAction("volume_down", "Volume Down", "Decrease volume", "L2"),
+                KeybindAction("love", "Love Track", "Love current track", "Y"),
+                KeybindAction("shuffle", "Shuffle", "Toggle shuffle", "X"),
+                KeybindAction("search", "Search", "Search in Apple Music", "SELECT"),
+            ],
+            button_map={
+                "A": "play_pause",
+                "R1": "next_track",
+                "L1": "prev_track",
+                "R2": "volume_up",
+                "L2": "volume_down",
+                "Y": "love",
+                "X": "shuffle",
+                "SELECT": "search",
+            },
+        )
+
+        # Preview Mode
+        self.modes["preview"] = ModeConfig(
+            mode_id="preview",
+            display_name="Preview",
+            actions=[
+                KeybindAction("next_page", "Next Page", "Go to next page", "R1"),
+                KeybindAction("prev_page", "Previous Page", "Go to previous page", "L1"),
+                KeybindAction("zoom_in", "Zoom In", "Zoom in on document", "R2"),
+                KeybindAction("zoom_out", "Zoom Out", "Zoom out on document", "L2"),
+                KeybindAction("actual_size", "Actual Size", "Reset zoom to 100%", "A"),
+                KeybindAction("share", "Share", "Share document", "Y"),
+                KeybindAction("rotate_left", "Rotate Left", "Rotate image left", "X"),
+                KeybindAction("rotate_right", "Rotate Right", "Rotate image right", "B"),
+            ],
+            button_map={
+                "R1": "next_page",
+                "L1": "prev_page",
+                "R2": "zoom_in",
+                "L2": "zoom_out",
+                "A": "actual_size",
+                "Y": "share",
+                "X": "rotate_left",
+                "B": "rotate_right",
+            },
+        )
+
+        # VS Code Mode
+        self.modes["vscode"] = ModeConfig(
+            mode_id="vscode",
+            display_name="VS Code",
+            actions=[
+                KeybindAction("command_palette", "Command Palette", "Open command palette", "Y"),
+                KeybindAction("quick_open", "Quick Open", "Quick open file", "A"),
+                KeybindAction("toggle_terminal", "Toggle Terminal", "Show/hide terminal", "X"),
+                KeybindAction("go_definition", "Go to Definition", "Navigate to definition", "B"),
+                KeybindAction("find", "Find", "Open find dialog", "F"),
+                KeybindAction("save", "Save", "Save current file", "S"),
+                KeybindAction("new_file", "New File", "Create new file", "N"),
+                KeybindAction("close_tab", "Close Tab", "Close current tab", "W"),
+            ],
+            button_map={
+                "Y": "command_palette",
+                "A": "quick_open",
+                "X": "toggle_terminal",
+                "B": "go_definition",
+            },
+        )
+
+        # Notion Mode
+        self.modes["notion"] = ModeConfig(
+            mode_id="notion",
+            display_name="Notion",
+            actions=[
+                KeybindAction("quick_find", "Quick Find", "Quick find in Notion", "Y"),
+                KeybindAction("new_page", "New Page", "Create new page", "A"),
+                KeybindAction("toggle_todo", "Toggle Todo", "Toggle todo checkbox", "X"),
+                KeybindAction("slash_command", "Slash Command", "Open slash command", "B"),
+                KeybindAction("back", "Go Back", "Navigate back", "L1"),
+                KeybindAction("forward", "Go Forward", "Navigate forward", "R1"),
+                KeybindAction("command_palette", "Command Palette", "Open command palette", "SELECT"),
+            ],
+            button_map={
+                "Y": "quick_find",
+                "A": "new_page",
+                "X": "toggle_todo",
+                "B": "slash_command",
+                "L1": "back",
+                "R1": "forward",
+                "SELECT": "command_palette",
+            },
+        )
+
+        # Messages Mode
+        self.modes["messages"] = ModeConfig(
+            mode_id="messages",
+            display_name="Messages",
+            actions=[
+                KeybindAction("new_message", "New Message", "Start new conversation", "N"),
+                KeybindAction("send_message", "Send", "Send message", "RETURN"),
+                KeybindAction("next_conversation", "Next Chat", "Go to next conversation", "R1"),
+                KeybindAction("prev_conversation", "Previous Chat", "Go to previous conversation", "L1"),
+                KeybindAction("search", "Search", "Search messages", "F"),
+                KeybindAction("details", "Chat Info", "Show chat details", "I"),
+            ],
+            button_map={
+                "R1": "next_conversation",
+                "L1": "prev_conversation",
+            },
+        )
+
+        # WhatsApp Mode
+        self.modes["whatsapp"] = ModeConfig(
+            mode_id="whatsapp",
+            display_name="WhatsApp",
+            actions=[
+                KeybindAction("new_chat", "New Chat", "Start new chat", "N"),
+                KeybindAction("send", "Send", "Send message", "RETURN"),
+                KeybindAction("search", "Search", "Search chats", "F"),
+                KeybindAction("search_in_chat", "Search in Chat", "Search within current chat", "Y"),
+                KeybindAction("archive_chat", "Archive Chat", "Archive current chat", "X"),
+                KeybindAction("mute_chat", "Mute Chat", "Mute current chat", "B"),
+            ],
+            button_map={
+                "Y": "search_in_chat",
+                "X": "archive_chat",
+                "B": "mute_chat",
+            },
+        )
+
+    def _load(self) -> None:
+        """Load configuration from disk."""
+        if not self.CONFIG_FILE.exists():
+            logger.info("No existing keybinding config found, using defaults")
+            return
+
+        try:
+            with open(self.CONFIG_FILE, "r") as f:
+                data = json.load(f)
+
+            for mode_id, mode_data in data.get("modes", {}).items():
+                if mode_id in self.modes:
+                    self.modes[mode_id].button_map = mode_data.get("button_map", {})
+                    self.modes[mode_id].combo_map = mode_data.get("combo_map", {})
+
+            logger.info("Loaded keybinding config from %s", self.CONFIG_FILE)
+        except Exception as e:
+            logger.error("Failed to load keybinding config: %s", e)
+
+    def save(self) -> None:
         """Save configuration to disk."""
         try:
-            self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            data = {
-                "version": 1,
-                "modes": [mode.to_dict() for mode in self.modes.values()],
-            }
-            with open(self.CONFIG_PATH, "w") as f:
-                json.dump(data, f, indent=2)
-            logger.info("Saved keybindings to %s", self.CONFIG_PATH)
-        except Exception as e:
-            logger.error("Failed to save keybindings: %s", e)
+            self.CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    def get_mode(self, mode_id: str) -> ModeConfig | None:
-        """Get configuration for a mode."""
+            data = {
+                "modes": {
+                    mode_id: {
+                        "button_map": mode.button_map,
+                        "combo_map": mode.combo_map,
+                    }
+                    for mode_id, mode in self.modes.items()
+                }
+            }
+
+            with open(self.CONFIG_FILE, "w") as f:
+                json.dump(data, f, indent=2)
+
+            logger.info("Saved keybinding config to %s", self.CONFIG_FILE)
+        except Exception as e:
+            logger.error("Failed to save keybinding config: %s", e)
+
+    def get_mode_config(self, mode_id: str) -> ModeConfig | None:
+        """Get configuration for a specific mode."""
         return self.modes.get(mode_id)
 
-    def save_mode(self, mode: ModeConfig) -> None:
-        """Save a mode's configuration."""
-        self.modes[mode.mode_id] = mode
-        self._save()
+    def reset_to_defaults(self, mode_id: str | None = None) -> None:
+        """Reset configuration to defaults. If mode_id is None, resets all."""
+        if mode_id:
+            if mode_id in self.modes:
+                del self.modes[mode_id]
+                self._create_defaults()
+                logger.info("Reset keybindings for mode: %s", mode_id)
+        else:
+            self.modes.clear()
+            self._create_defaults()
+            logger.info("Reset all keybindings to defaults")
 
-    def reset_mode(self, mode_id: str) -> None:
-        """Reset a mode to defaults."""
-        if mode_id in self.modes:
-            del self.modes[mode_id]
-        self._create_defaults()
 
-
-# Global instance
+# Global config instance
 _config: KeybindConfig | None = None
 
 
 def get_config() -> KeybindConfig:
-    """Get the global configuration instance."""
+    """Get the global keybinding config instance."""
     global _config
     if _config is None:
         _config = KeybindConfig()
+    return _config
+
+
+def reload_config() -> KeybindConfig:
+    """Reload configuration from disk."""
+    global _config
+    _config = KeybindConfig()
     return _config
