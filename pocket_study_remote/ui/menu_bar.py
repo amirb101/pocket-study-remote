@@ -76,8 +76,25 @@ class MenuBarApp(rumps.App):
     def update_connection(self, is_connected: bool) -> None:
         """Reflect the controller connection state."""
         self._is_connected = is_connected
-        self.title = _ICON_CONNECTED if is_connected else _ICON_DISCONNECTED
+        self._update_title()
         self._rebuild_menu()
+
+    def _update_title(self) -> None:
+        """Update title based on connection state (respects calibration overlay)."""
+        if getattr(self, "_calibration_prompt", None):
+            self.title = f"🎮 {self._calibration_prompt}"
+        else:
+            self.title = _ICON_CONNECTED if self._is_connected else _ICON_DISCONNECTED
+
+    def show_calibration_prompt(self, button_name: str) -> None:
+        """Show calibration prompt in menu bar title."""
+        self._calibration_prompt = f"Press: {button_name}"
+        self._update_title()
+
+    def clear_calibration_prompt(self) -> None:
+        """Clear calibration prompt from menu bar title."""
+        self._calibration_prompt = None
+        self._update_title()
 
     # ------------------------------------------------------------------
     # rumps lifecycle

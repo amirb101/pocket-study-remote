@@ -177,7 +177,7 @@ class CalibrationWizard:
         self.mapping.alias_to_button.clear()
         self.mapping.is_complete = False
 
-        self._show_current_notification()
+        self._show_current_prompt()
 
         # Auto-cancel after 2 minutes of inactivity
         def timeout_check():
@@ -195,9 +195,10 @@ class CalibrationWizard:
         self._timeout_timer = rumps.Timer(schedule_timeout, 30.0)  # Check every 30s
         self._timeout_timer.start()
 
-    def _show_current_notification(self) -> None:
-        """Show non-blocking notification for current button."""
+    def _show_current_prompt(self) -> None:
+        """Show calibration prompt in menu bar title and notification."""
         import rumps
+        from ..main import app as main_app
 
         if not self._active or self.current_index >= len(CALIBRATION_ORDER):
             return
@@ -205,13 +206,20 @@ class CalibrationWizard:
         btn = CALIBRATION_ORDER[self.current_index]
         progress = f"{self.current_index + 1}/{len(CALIBRATION_ORDER)}"
 
-        # Use notification (non-blocking) instead of alert
-        rumps.notification(
-            title=f"Calibration {progress}",
-            subtitle=f"Press: {btn.display_name}",
-            message="Press the button on your controller now",
-            sound=False,
-        )
+        # Show in menu bar title (always visible)
+        if main_app and hasattr(main_app, "show_calibration_prompt"):
+            main_app.show_calibration_prompt(btn.display_name)
+
+        # Also try notification (might not show if DND is on)
+        try:
+            rumps.notification(
+                title=f"Calibration {progress}",
+                subtitle=f"Press: {btn.display_name}",
+                message=f"Step {progress} - Press this button on controller",
+                sound=False,
+            )
+        except Exception:
+            pass  # Notifications might fail
 
         logger.info("[Calibration] Waiting for: %s (%s)", btn.name, btn.display_name)
 
@@ -225,7 +233,7 @@ class CalibrationWizard:
         if self.current_index >= len(CALIBRATION_ORDER):
             self._finish()
         else:
-            self._show_current_notification()
+            self._show_current_prompt()
 
     def on_button_event(self, alias: str, is_pressed: bool) -> bool:
         """
@@ -262,6 +270,7 @@ class CalibrationWizard:
     def _finish(self) -> None:
         """Complete calibration."""
         import rumps
+        from ..main import app as main_app
 
         self._active = False
         for t in (self._timer, getattr(self, '_timeout_timer', None)):
@@ -272,6 +281,10 @@ class CalibrationWizard:
                     pass
         self._timer = None
         self._timeout_timer = None
+
+        # Clear menu bar prompt
+        if main_app and hasattr(main_app, "clear_calibration_prompt"):
+            main_app.clear_calibration_prompt()
 
         self.mapping.is_complete = True
         get_store().save_mapping(self.mapping)
@@ -287,6 +300,8 @@ class CalibrationWizard:
 
     def cancel(self) -> None:
         """Cancel calibration."""
+        from ..main import app as main_app
+
         self._active = False
         self._waiting_for_press = False
         for t in (self._timer, getattr(self, '_timeout_timer', None)):
@@ -297,4 +312,9 @@ class CalibrationWizard:
                     pass
         self._timer = None
         self._timeout_timer = None
+
+        # Clear menu bar prompt
+        if main_app and hasattr(main_app, "clear_calibration_prompt"):
+            main_app.clear_calibration_prompt()
+
         self.on_cancel()
