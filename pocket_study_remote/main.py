@@ -169,12 +169,13 @@ def _start_connection_watcher(
 # Main
 # ---------------------------------------------------------------------------
 
-# Global controller reference for menu callbacks
+# Global references for cross-module access
 controller: _ControllerBackend | None = None
+app: MenuBarApp | None = None
 
 
 def main() -> None:
-    global controller
+    global controller, app
     _check_accessibility()
 
     registry   = _build_registry()
@@ -196,7 +197,7 @@ def main() -> None:
         logger.info("Pocket Study Remote is running")
 
     logger.info("main: creating MenuBarApp...")
-    app = MenuBarApp(on_launch=on_launch)
+    app = MenuBarApp(on_launch=on_launch)  # noqa: F841 - used via global
 
     # Wire mode-change callback now that app exists.
     router._on_mode_changed = app.update_mode
