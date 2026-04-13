@@ -223,9 +223,21 @@ class MenuBarApp(rumps.App):
             )
 
     def _edit_keybindings(self, _) -> None:
-        """Open the keybinding editor GUI."""
-        from ..ui.keybind_editor import show_keybind_editor
-        show_keybind_editor()
+        """Open the keybindings JSON file for editing."""
+        import subprocess
+        from pathlib import Path
+
+        config_path = Path.home() / ".config" / "pocket-study-remote" / "keybindings.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not config_path.exists():
+            # Create default config first
+            from ..config.keybind_config import get_config
+            get_config()  # This creates defaults
+
+        # Open in default editor
+        subprocess.run(["open", str(config_path)])
+        self.status = f"Opened {config_path} - edit and save, changes apply on next mode switch"
 
     def _open_accessibility_settings(self, _) -> None:
         """System Settings → Privacy & Security → Accessibility (for simulated keystrokes)."""
