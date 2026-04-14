@@ -1,4 +1,4 @@
-# Pocket Study Remote — Python dependencies (macOS only)
+# ButtonBridge — Python dependencies (macOS only)
 #
 # Use a venv (see scripts/run.sh). PyObjC needs a Python version with wheels on PyPI
 # — typically 3.10–3.13. If install fails with "No matching distribution", use

@@ -8,6 +8,17 @@ There is **no main document window** — only the menu bar icon (and a Dock tile
 
 ---
 
+## Give it to someone else (no Python required)
+
+Build a drag-and-drop **`.app`** on your Mac, zip it, and send it. They install like any small utility: Applications folder, Accessibility, Bluetooth.
+
+- **Step-by-step (for you + for them):** [docs/FRIEND_INSTALL.md](docs/FRIEND_INSTALL.md)
+- **Build command:** `./scripts/build_mac_app.sh` → `dist/ButtonBridge.app` (needs [PyInstaller](https://pyinstaller.org); pinned in `requirements-build.txt`)
+
+The first build is the fiddliest (PyObjC + GameController); if the `.app` misbehaves on her machine, the same doc has a **fallback** (run from source with `./scripts/run.sh`).
+
+---
+
 ## How modes work
 
 1. **App detection** periodically reads the active app’s bundle identifier.

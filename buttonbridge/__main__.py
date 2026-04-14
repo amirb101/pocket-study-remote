@@ -1,7 +1,13 @@
 """Run with: ``python -m buttonbridge`` (from the repository root)."""
 
 import sys
-from pathlib import Path
+
+# Child process: keybind editor (works when frozen as a .app — no path to keybind_gui.py).
+if "--buttonbridge-keybind-gui" in sys.argv:
+    from buttonbridge.ui.keybind_gui import run_standalone
+
+    run_standalone()
+    raise SystemExit(0)
 
 
 def show_startup_choice():
@@ -10,7 +16,7 @@ def show_startup_choice():
     from tkinter import ttk
     
     root = tk.Tk()
-    root.title("Pocket Study Remote")
+    root.title("ButtonBridge")
     root.geometry("450x200")
     root.resizable(False, False)
     
@@ -29,7 +35,7 @@ def show_startup_choice():
     # Title
     tk.Label(
         frame,
-        text="Pocket Study Remote",
+        text="ButtonBridge",
         font=("Helvetica", 16, "bold"),
     ).pack(pady=(0, 10))
     
@@ -81,18 +87,16 @@ def show_startup_choice():
     return result[0]
 
 
-def launch_keybinding_gui():
-    """Launch the keybinding GUI and wait for it to close."""
+def launch_keybinding_gui() -> bool:
+    """Launch the keybinding GUI in a subprocess (separate Tk main loop)."""
     import subprocess
-    
-    gui_path = Path(__file__).parent / "ui" / "keybind_gui.py"
-    
-    # Launch GUI and wait for it to close
-    result = subprocess.run(
-        [sys.executable, str(gui_path)],
-        check=False,
-    )
-    
+
+    frozen = getattr(sys, "frozen", False)
+    if frozen:
+        cmd = [sys.executable, "--buttonbridge-keybind-gui"]
+    else:
+        cmd = [sys.executable, "-m", "buttonbridge", "--buttonbridge-keybind-gui"]
+    result = subprocess.run(cmd, check=False)
     return result.returncode == 0
 
 
@@ -109,7 +113,7 @@ def main():
             root.withdraw()
             launch = messagebox.askyesno(
                 "Configuration Complete",
-                "Keybindings saved!\n\nLaunch Pocket Study Remote now?"
+                "Keybindings saved!\n\nLaunch ButtonBridge now?"
             )
             root.destroy()
             

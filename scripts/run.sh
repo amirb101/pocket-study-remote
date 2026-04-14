@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run Pocket Study Remote (Python) from the repo root.
+# Run ButtonBridge from the repo root.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

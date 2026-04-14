@@ -319,3 +319,56 @@ def get_config() -> KeybindConfig:
         _config_instance = KeybindConfig()
         _config_instance.load()
     return _config_instance
+
+
+def _config_to_gui_dict(cfg: KeybindConfig) -> dict[str, dict[str, str]]:
+    """Flatten KeybindConfig into the dict shape used by ``ui/keybind_gui.py``."""
+    from ..core.gamepad_button import GamepadButton
+
+    ordered = list(GamepadButton)
+    out: dict[str, dict[str, str]] = {}
+    for mode_id, mc in cfg.modes.items():
+        inner: dict[str, str] = {}
+        for bid, act in sorted(mc.button_map.items(), key=lambda x: x[0]):
+            idx = (act.button_id or bid) - 1
+            idx = max(0, min(len(ordered) - 1, idx))
+            inner[act.name] = ordered[idx].value
+        out[mode_id] = inner
+    return out
+
+
+def load_config() -> dict[str, dict[str, str]]:
+    """Load current keybindings as ``{ mode_id: { action_name: button_label } }``."""
+    return _config_to_gui_dict(get_config())
+
+
+def get_default_config() -> dict[str, dict[str, str]]:
+    """Defaults only (does not read disk); used by Reset in the keybind editor."""
+    return _config_to_gui_dict(KeybindConfig())
+
+
+def save_config(data: dict[str, dict[str, str]]) -> None:
+    """Persist GUI-shaped dict back into :class:`KeybindConfig` and save JSON."""
+    from ..core.gamepad_button import GamepadButton
+
+    cfg = get_config()
+    for mode_id, action_to_label in data.items():
+        if mode_id not in cfg.modes:
+            continue
+        mc = cfg.modes[mode_id]
+        for bid, act in list(mc.button_map.items()):
+            if act.name not in action_to_label:
+                continue
+            label = action_to_label[act.name]
+            btn_id = next(
+                (i + 1 for i, b in enumerate(GamepadButton) if b.value == label),
+                act.button_id or bid,
+            )
+            mc.button_map[bid] = KeybindAction(
+                name=act.name,
+                description=act.description,
+                key_sequence=act.key_sequence,
+                button_id=btn_id,
+                enabled=act.enabled,
+            )
+    cfg.save()

@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from buttonbridge.config.keybind_config import load_config, save_config, get_default_config
 from buttonbridge.core.gamepad_button import GamepadButton
-from buttonbridge.core.app_mode import AppMode
 
 
 class KeybindGUI:
@@ -50,10 +49,10 @@ class KeybindGUI:
         
         # Create tab for each mode
         self.mode_tabs = {}
-        for mode in AppMode:
-            tab = self._create_mode_tab(mode)
-            self.notebook.add(tab, text=mode.value.title())
-            self.mode_tabs[mode] = tab
+        for mode_id in sorted(self.config.keys()):
+            tab = self._create_mode_tab(mode_id)
+            self.notebook.add(tab, text=mode_id.replace("_", " ").title())
+            self.mode_tabs[mode_id] = tab
         
         # Buttons at bottom
         button_frame = ttk.Frame(self.root, padding="10")
@@ -77,7 +76,7 @@ class KeybindGUI:
             command=self._save_and_close
         ).pack(side="right", padx=5)
     
-    def _create_mode_tab(self, mode: AppMode) -> ttk.Frame:
+    def _create_mode_tab(self, mode_id: str) -> ttk.Frame:
         """Create a tab for a specific mode."""
         tab = ttk.Frame(self.notebook, padding="10")
         
@@ -106,7 +105,7 @@ class KeybindGUI:
         )
         
         # Get actions for this mode
-        actions = self.modified_config.get(mode.value, {})
+        actions = self.modified_config.get(mode_id, {})
         
         # Create dropdown for each action
         for idx, (action_name, current_button) in enumerate(actions.items(), start=1):
@@ -126,7 +125,7 @@ class KeybindGUI:
             dropdown.grid(row=idx, column=1, sticky="w", padx=5, pady=3)
             
             # Store reference
-            self.bind_widgets[(mode.value, action_name)] = (dropdown, button_var)
+            self.bind_widgets[(mode_id, action_name)] = (dropdown, button_var)
         
         return tab
     
@@ -164,7 +163,12 @@ class KeybindGUI:
             messagebox.showerror("Error", f"Failed to save configuration: {e}")
 
 
-if __name__ == "__main__":
+def run_standalone() -> None:
+    """Entry point for subprocess / ``python -m buttonbridge --buttonbridge-keybind-gui``."""
     root = tk.Tk()
-    app = KeybindGUI(root)
+    KeybindGUI(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    run_standalone()
