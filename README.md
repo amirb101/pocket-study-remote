@@ -1,18 +1,25 @@
-# Pocket Study Remote (Python)
+# ButtonBridge
 
-A context-aware macOS menu bar app that turns an **8BitDo Micro** gamepad into a
-study and life remote. Auto-detects the frontmost app and switches button mappings.
+A context-aware macOS menu bar app that maps a Bluetooth gamepad (for example an **8BitDo Micro**) to keyboard shortcuts and system actions. It detects the frontmost application and switches mappings automatically.
 
-There is **no main document window** — only the menu bar icon (and the Dock tile while Terminal runs `run.sh`). Background threads start automatically at launch; you do not need to click anything to “start” the app.
+There is **no main document window** — only the menu bar icon (and a Dock tile while you run it from Terminal). Background work starts at launch; you do not need to click anything to “start” the app.
 
-## Modes
+Repository: **https://github.com/amirb101/buttonbridge**
 
-| Mode | Active when | Primary use |
-|---|---|---|
-| **Spotify** | Spotify is frontmost | Play/pause, next/prev, seek, volume, shuffle |
-| **Browser** | Comet / Chrome / Arc / Edge | Tab navigation, back/forward, new tab, bookmark combo |
-| **Obsidian** | Obsidian is frontmost | Daily note, checklist, command palette, note history |
-| **Global** | Anything else | Music, volume, screenshots, Space switching, open apps |
+---
+
+## Modes (high level)
+
+| Category | When active | Examples |
+|----------|-------------|----------|
+| **Media** | Spotify, Apple Music | Play/pause, tracks, volume |
+| **Browser** | Common browsers | Tabs, back/forward, address bar |
+| **Productivity** | Obsidian, Notion, Preview, Finder | Navigation, search, files |
+| **Development** | VS Code, Cursor | Command palette, terminal, find |
+| **Communication** | Messages, WhatsApp, FaceTime, Phone | Send, search, call controls |
+| **Global** | Everything else | System volume, music, Spotlight, screenshots, spaces |
+
+Per-button mappings are editable in the keybinding GUI; defaults live under `~/.buttonbridge/`.
 
 ---
 
@@ -20,179 +27,111 @@ There is **no main document window** — only the menu bar icon (and the Dock ti
 
 ### 1. Controller
 
-Pair via Bluetooth: hold the pairing button until the lights flash, then add in
-macOS **System Settings → Bluetooth**.
+Pair via Bluetooth: hold the pairing button until the lights flash, then add the device in **System Settings → Bluetooth**.
 
-The menu bar app reads the pad through **Apple GameController**. If it never
-shows as connected, try the bottom **mode switch**: **X** or **S** (Switch)
-often appears as a standard Bluetooth gamepad to macOS; **D** is mainly for
-the pygame `button_logger` tool.
+On macOS the app uses **Apple GameController** for input. If the pad never connects, try the controller’s **mode switch** (e.g. **X** or **S** for a standard gamepad profile). The `button_logger` tool may use pygame/SDL for diagnostics.
 
 ### 2. Python environment
 
 ```bash
-# Recommended: use a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
 ### 3. Accessibility permission
 
-The app sends keyboard shortcuts via the Core Graphics event system, which
-requires **Accessibility** access. There is no `.app` bundle: macOS grants
-permission to the **exact program binary** that is running (the Python
-interpreter).
+The app posts keyboard events via the accessibility stack. There is no `.app` bundle: macOS grants access to the **Python interpreter** you actually run.
 
-1. Start the app once from the same way you always run it (e.g. `./scripts/run.sh`
-   or `python -m pocket_study_remote` inside your venv).
-2. Read the startup log line: `Accessibility: add this binary if keystrokes fail → …`
-3. **System Settings → Privacy & Security → Accessibility →** list **+** (add).
-4. Press **⌘⇧G** in the file picker and paste the path from the log, or navigate
-   to your venv’s interpreter, e.g.  
-   `…/controller/.venv/bin/python3`  
-   (use `realpath .venv/bin/python3` or `./scripts/print-accessibility-path.sh`
-   if you are unsure).
+1. Start the app the same way you always will (e.g. `./scripts/run.sh` or `python -m buttonbridge` inside the venv).
+2. Read the startup log for the interpreter path to add if keystrokes fail.
+3. **System Settings → Privacy & Security → Accessibility →** use **+** and add that `python3` binary (⌘⇧G in the picker helps).
 
-If you run from **Cursor’s integrated terminal**, you may need that interpreter
-on the list (not only “Terminal”). Remove duplicate or stale entries that point
-at old venv paths after recreating `.venv`.
-
-You only do this once per interpreter path. The app logs a warning on startup
-if permission is still missing.
+If you use **Cursor’s** terminal, you may need that interpreter on the list, not only Terminal.app. Remove stale paths after recreating `.venv`.
 
 ### 4. Run
 
 ```bash
-# From the repository root:
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m pocket_study_remote
+python -m buttonbridge
 ```
 
-Or use `./scripts/run.sh` (creates `.venv`, installs deps, runs the app).
+Or:
+
+```bash
+./scripts/run.sh
+```
 
 ---
 
 ## Verify button mapping
 
-The 8BitDo Micro's button indices in D mode can vary slightly between firmware
-versions. Before running the main app, confirm the mapping on your unit:
-
 ```bash
-python -m pocket_study_remote.tools.button_logger
+python -m buttonbridge.tools.button_logger
 ```
 
-Press every button and note the index printed for each. If anything differs
-from the defaults, update `pocket_study_remote/constants.py` → `Controller.ButtonIndex`.
+Press each control and compare indices to `buttonbridge/constants.py` → `Controller.ButtonIndex` if anything differs on your hardware.
 
-The menu bar app uses **Apple GameController** on macOS for the pad (no SDL
-window). If you still see “Not connected”, confirm the controller appears under
-**System Settings → Game Controllers**, try re-pairing, and check DEBUG logs for
-`GameController connected`. The separate `button_logger` tool still uses pygame
-for diagnostics.
+If the main app shows “Not connected”, check **System Settings → Game Controllers**, re-pair if needed, and confirm DEBUG logs mention GameController.
 
 ---
 
-## Obsidian hotkey setup
+## Obsidian hotkey setup (optional)
 
-The Obsidian mode fires custom hotkeys. Open Obsidian → Settings → Hotkeys
-and assign:
-
-| Command | Shortcut |
-|---|---|
-| Open today's daily note | `Ctrl+Shift+D` |
-| Toggle checklist status | `Ctrl+Shift+C` |
-| Insert template | `Ctrl+Shift+T` |
-| Open graph view | `Ctrl+Shift+G` |
-
-The remaining buttons use Obsidian's defaults (Cmd+P, Cmd+O, Cmd+N, etc.).
+If you use custom Obsidian shortcuts, align them in **Obsidian → Settings → Hotkeys** with what your mode sends, or remap actions in the keybinding GUI.
 
 ---
 
-## Confirm Comet's bundle ID
+## Confirm Comet’s bundle ID (optional)
 
 ```bash
 mdls -name kMDItemCFBundleIdentifier /Applications/Comet.app
 ```
 
-Update `constants.py → BundleID.COMET` if it differs from `ai.perplexity.comet`.
+If it differs from `ai.perplexity.comet`, update `buttonbridge/constants.py` → `BundleID.COMET`.
 
 ---
 
 ## Project structure
 
 ```
-pocket_study_remote/
-├── __init__.py
-├── main.py                     — entry point, dependency wiring
-├── constants.py                — all magic numbers and bundle IDs
-├── requirements.txt
+buttonbridge/
+├── __main__.py
+├── main.py
+├── constants.py
 ├── core/
-│   ├── action.py               — Action dataclass + factory functions
-│   ├── app_mode.py             — AppMode abstract base class
-│   ├── button_combo.py         — ButtonCombo frozen dataclass
-│   ├── gamepad_button.py       — GamepadButton enum
-│   └── mode_registry.py        — bundle ID → mode resolution
 ├── controller/
-│   └── controller_manager.py   — pygame gamepad polling (background thread)
 ├── detection/
-│   └── app_detector.py         — NSWorkspace polling (background thread)
 ├── routing/
-│   └── action_router.py        — combo detection + action dispatch
 ├── executors/
-│   ├── applescript_executor.py — subprocess osascript, async queue
-│   └── keystroke_executor.py   — CGEventPost via PyObjC Quartz
-├── modes/
-│   ├── global_mode.py
-│   ├── spotify_mode.py
-│   ├── browser_mode.py
-│   └── obsidian_mode.py
+├── modes/              # One module per app mode
+├── config/             # Keybinding persistence
 ├── ui/
-│   └── menu_bar.py             — rumps MenuBarApp
 └── tools/
-    └── button_logger.py        — debug tool: prints raw joystick events
 ```
 
 ---
 
 ## Adding a new mode
 
-1. Create `modes/word_mode.py` — subclass `AppMode`, define `button_map`
-2. Add the bundle ID to `constants.py → BundleID`
-3. Add one line in `main.py → _build_registry()`:
-   ```python
-   registry.register(WordMode(), bundle_ids=[BundleID.WORD])
-   ```
-
-Nothing else changes.
-
----
-
-## V2 backlog
-
-- Word mode (all keyboard shortcuts — low complexity, just deprioritised)
-- Photo Booth shutter (test the shortcut on the target Mac first)
-- FaceTime live photo (likely needs PyObjC AX tree walking)
-- Preferences window (per-mode remapping, saved to JSON)
-- Long press support (hold A for 500ms → different action)
-- LaunchAgent plist for proper launch-at-login without Terminal
+1. Add `buttonbridge/modes/yourapp_mode.py` (subclass `ConfigurableMode`).
+2. Add bundle ID(s) in `buttonbridge/constants.py` → `BundleID`.
+3. Register in `buttonbridge/main.py` → `_build_registry()`.
+4. Add defaults in `buttonbridge/config/keybind_config.py` if you want GUI rows out of the box.
 
 ---
 
 ## Architecture notes
 
-**Why `subprocess osascript` instead of `NSAppleScript` via PyObjC?**
-Simpler, more debuggable, and identical in effect. `osascript` is a stable
-macOS CLI tool with no binding surprises.
+**AppleScript** is often run via `osascript` in a subprocess for clarity and easy debugging.
 
-**Why poll instead of NSWorkspace notifications for app detection?**
-NSWorkspace notifications require the AppKit run loop. That loop is owned by
-the rumps main thread. Polling from a separate daemon thread at 0.5 s
-avoids any entanglement and is imperceptible to the user.
+**App detection** uses a short-interval poll from a background thread so it does not fight the AppKit main loop owned by rumps.
 
-**Why pygame for gamepad input instead of PyObjC GameController?**
-pygame's joystick API is simpler, better documented in Python, and handles
-D mode HID devices reliably. The `SDL_VIDEODRIVER=dummy` trick prevents it
-from needing a display.
+**Gamepad input** on macOS is wired through **GameController** in the main app path; pygame may still appear in tools or fallbacks depending on your checkout.
+
+---
+
+## License
+
+MIT — fork and adapt for your machine.
