@@ -8,14 +8,14 @@ There is **no main document window** — only the menu bar icon (and a Dock tile
 
 ---
 
-## Give it to someone else (no Python required)
+## Pre-built app (no Python required)
 
-Build a drag-and-drop **`.app`** on your Mac, zip it, and send it. They install like any small utility: Applications folder, Accessibility, Bluetooth.
+Build a drag-and-drop **`.app`** on your Mac, zip it, and share it. Recipients install it like any small utility: Applications folder, Accessibility, Bluetooth.
 
-- **Step-by-step (for you + for them):** [docs/FRIEND_INSTALL.md](docs/FRIEND_INSTALL.md)
-- **Build command:** `./scripts/build_mac_app.sh` → `dist/ButtonBridge.app` (needs [PyInstaller](https://pyinstaller.org); pinned in `requirements-build.txt`)
+- **Beginner-oriented steps (developer + recipient):** [docs/beginner-installation-guide.md](docs/beginner-installation-guide.md)
+- **Build command:** `./scripts/build_mac_app.sh` → `dist/ButtonBridge.app` ([PyInstaller](https://pyinstaller.org); version pinned in `requirements-build.txt`)
 
-The first build is the fiddliest (PyObjC + GameController); if the `.app` misbehaves on her machine, the same doc has a **fallback** (run from source with `./scripts/run.sh`).
+The first PyInstaller build is the most sensitive to environment (PyObjC + GameController). If the `.app` misbehaves on another Mac, the same guide includes a **fallback** (run from source with `./scripts/run.sh`).
 
 ---
 

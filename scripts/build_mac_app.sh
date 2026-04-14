@@ -16,4 +16,4 @@ echo "→ Running PyInstaller …"
 .venv/bin/pyinstaller --noconfirm --clean "${ROOT}/ButtonBridge.spec"
 
 echo "→ Done: ${ROOT}/dist/ButtonBridge.app"
-echo "  Zip that folder or the .app and send it. See docs/FRIEND_INSTALL.md for setup steps."
+echo "  Zip that folder or the .app and share it. See docs/beginner-installation-guide.md for setup steps."
