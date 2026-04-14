@@ -118,6 +118,13 @@ class BundleID:
     NOTION = "notion.id"
     FIGMA = "com.figma.Desktop"
 
+    # Communication
+    MESSAGES = "com.apple.MobileSMS"
+    WHATSAPP = "net.whatsapp.WhatsApp"
+    FACETIME = "com.apple.FaceTime"
+    # macOS Phone app (verify with: mdls -name kMDItemCFBundleIdentifier /System/Applications/Phone.app)
+    PHONE = "com.apple.mobilephone"
+
     # Browser bundle IDs (most share standard macOS shortcuts)
     CHROME   = "com.google.Chrome"
     ARC      = "company.thebrowser.Browser"

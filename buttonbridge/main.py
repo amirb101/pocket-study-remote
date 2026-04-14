@@ -1,4 +1,4 @@
-"""Main entry point for Pocket Study Remote."""
+"""Main entry point for ButtonBridge."""
 
 from __future__ import annotations
 
@@ -12,11 +12,13 @@ from .core.mode_registry import ModeRegistry
 from .detection.app_detector import AppDetector
 from .modes.apple_music_mode import AppleMusicMode
 from .modes.browser_mode import BrowserMode
+from .modes.facetime_mode import FaceTimeMode
 from .modes.finder_mode import FinderMode
 from .modes.global_mode import GlobalMode
 from .modes.messages_mode import MessagesMode
 from .modes.notion_mode import NotionMode
 from .modes.obsidian_mode import ObsidianMode
+from .modes.phone_mode import PhoneMode
 from .modes.preview_mode import PreviewMode
 from .modes.spotify_mode import SpotifyMode
 from .modes.vscode_mode import VSCodeMode
@@ -87,6 +89,8 @@ def _build_registry() -> ModeRegistry:
     # Communication
     registry.register(MessagesMode(), bundle_ids=[BundleID.MESSAGES])
     registry.register(WhatsAppMode(), bundle_ids=[BundleID.WHATSAPP])
+    registry.register(FaceTimeMode(), bundle_ids=[BundleID.FACETIME])
+    registry.register(PhoneMode(), bundle_ids=[BundleID.PHONE])
 
     return registry
 

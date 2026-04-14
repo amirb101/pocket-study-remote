@@ -1,25 +1,151 @@
 # ButtonBridge
 
-A context-aware macOS menu bar app that maps a Bluetooth gamepad (for example an **8BitDo Micro**) to keyboard shortcuts and system actions. It detects the frontmost application and switches mappings automatically.
+A context-aware macOS menu bar app that maps a Bluetooth gamepad (for example an **8BitDo Micro**) to keyboard shortcuts and system actions. It detects the **frontmost application** and switches controller mappings automatically.
 
 There is **no main document window** — only the menu bar icon (and a Dock tile while you run it from Terminal). Background work starts at launch; you do not need to click anything to “start” the app.
 
-Repository: **https://github.com/amirb101/buttonbridge**
+**Repository:** https://github.com/amirb101/buttonbridge
 
 ---
 
-## Modes (high level)
+## How modes work
 
-| Category | When active | Examples |
-|----------|-------------|----------|
-| **Media** | Spotify, Apple Music | Play/pause, tracks, volume |
-| **Browser** | Common browsers | Tabs, back/forward, address bar |
-| **Productivity** | Obsidian, Notion, Preview, Finder | Navigation, search, files |
-| **Development** | VS Code, Cursor | Command palette, terminal, find |
-| **Communication** | Messages, WhatsApp, FaceTime, Phone | Send, search, call controls |
-| **Global** | Everything else | System volume, music, Spotlight, screenshots, spaces |
+1. **App detection** periodically reads the active app’s bundle identifier.
+2. **Mode registry** (`buttonbridge/main.py`) maps that bundle ID to a mode class (Spotify, Browser, Global, …).
+3. If nothing matches, **Global** mode is used as the fallback.
+4. Each mode exposes a list of **actions** (play/pause, new tab, …). Your **keybindings** map physical buttons → action IDs. Edit mappings from the menu bar (keybinding editor subprocess).
 
-Per-button mappings are editable in the keybinding GUI; defaults live under `~/.buttonbridge/`.
+Bundle IDs live in `buttonbridge/constants.py`. If a mode never activates for an app you care about, add or correct the bundle ID and register it in `_build_registry()`.
+
+---
+
+## Mode reference (all built-in modes)
+
+Summary: which app(s) activate each mode. Exact bundle strings are in `constants.py` → `BundleID`.
+
+| Mode | `id` | Activated when frontmost app is |
+|------|------|----------------------------------|
+| **Global** | `global` | Fallback — any app not matched below |
+| **Browser** | `browser` | Chrome, Safari, Arc, Edge, Brave, Firefox (incl. Nightly), Opera, Vivaldi, Orion, Zen, Comet |
+| **Spotify** | `spotify` | Spotify |
+| **Apple Music** | `apple_music` | Apple Music |
+| **Obsidian** | `obsidian` | Obsidian |
+| **Notion** | `notion` | Notion |
+| **Finder** | `finder` | Finder |
+| **Preview** | `preview` | Preview |
+| **VS Code** | `vscode` | Visual Studio Code or Cursor |
+| **Messages** | `messages` | Messages |
+| **WhatsApp** | `whatsapp` | WhatsApp |
+| **FaceTime** | `facetime` | FaceTime |
+| **Phone** | `phone` | Phone (`com.apple.mobilephone` — verify on your OS if the app does not switch mode) |
+
+### Global (`global`)
+
+System-wide shortcuts and utilities (many use AppleScript or small helpers, not only raw keys):
+
+- Play / Pause, Next track, Previous track (Spotify via AppleScript)
+- Volume up / down, Toggle mute
+- Screenshot (region), Screenshot (full screen)
+- Mission Control, Spotlight, Lock screen
+- Open Obsidian, Open Spotify
+- Switch space left / right
+
+### Browser (`browser`)
+
+Standard macOS browser shortcuts (same idea across the browsers in the table above):
+
+- New tab, Close tab, Reopen closed tab, New window
+- Page back / forward, Previous / next tab
+- Scroll up / down (Page Up / Page Down)
+- Tab search, Focus address bar, Bookmark page
+
+### Spotify (`spotify`)
+
+- Play/pause, Next / previous track
+- Volume up / down (in-app)
+- Shuffle, Repeat, Like/unlike, Search
+
+### Apple Music (`apple_music`)
+
+- Play/pause, Next / previous track
+- Volume up / down, Love track, Shuffle, Search
+
+### Obsidian (`obsidian`)
+
+Uses Obsidian’s default shortcuts where noted, plus **custom chords** you should bind in Obsidian → **Settings → Hotkeys** to match:
+
+| Action in ButtonBridge | Suggested Obsidian hotkey |
+|------------------------|-------------------------|
+| Today’s daily note | `Ctrl+Shift+D` |
+| Toggle checklist | `Ctrl+Shift+C` |
+| Insert template | `Ctrl+Shift+T` |
+| Graph view | `Ctrl+Shift+G` |
+
+Also includes: Command palette, Quick switcher, Navigate back/forward, Toggle sidebar, Search all files, New note, Search current file — align or remap in the keybinding GUI if your vault differs.
+
+### Notion (`notion`)
+
+- Quick find, New page, Toggle todo, Slash command
+- Go back / forward, Command palette
+
+### Finder (`finder`)
+
+- New folder, Quick Look, Get Info, Search
+- Go back / forward, Move to Trash
+
+### Preview (`preview`)
+
+- Next / previous page, Zoom in / out, Actual size
+- Share, Rotate left / right
+
+### VS Code (`vscode`)
+
+Active for **VS Code** and **Cursor**:
+
+- Command palette, Quick open, Toggle terminal
+- Go to definition, Find, Save, New file, Close tab
+
+### Messages (`messages`)
+
+- New message, Send
+- Next / previous conversation, Search, Chat info
+
+### WhatsApp (`whatsapp`)
+
+- New chat, Send, Search, Search in chat
+- Archive chat, Mute chat
+
+### FaceTime (`facetime`)
+
+- Answer / decline / end call
+- Toggle mute, Toggle camera, Flip camera
+- Video effects, Full screen
+
+### Phone (`phone`)
+
+- Answer / decline / end call
+- Toggle mute
+- Keypad, Contacts, Recents, Voicemail
+
+If Phone mode does not trigger, run:
+
+```bash
+mdls -name kMDItemCFBundleIdentifier /System/Applications/Phone.app
+# or: /Applications/Phone.app
+```
+
+and update `BundleID.PHONE` in `constants.py` to match your Mac.
+
+---
+
+## Keybindings and config
+
+- **Editor:** launched from the menu bar (separate process so Tkinter stays on its own main thread).
+- **Storage:** `~/.buttonbridge/keybindings.json` (path may vary slightly by version — check `buttonbridge/config/keybind_config.py` for `CONFIG_FILE`).
+- **Per mode:** each tab lists that mode’s **actions**; you assign **gamepad buttons** (and optional combo behaviour where supported).
+- Unmapped actions simply do nothing until you assign them.
+
+Defaults are recreated when you reset; merge behaviour for old JSON files is defined in code.
 
 ---
 
@@ -77,12 +203,6 @@ If the main app shows “Not connected”, check **System Settings → Game Cont
 
 ---
 
-## Obsidian hotkey setup (optional)
-
-If you use custom Obsidian shortcuts, align them in **Obsidian → Settings → Hotkeys** with what your mode sends, or remap actions in the keybinding GUI.
-
----
-
 ## Confirm Comet’s bundle ID (optional)
 
 ```bash
@@ -105,7 +225,7 @@ buttonbridge/
 ├── detection/
 ├── routing/
 ├── executors/
-├── modes/              # One module per app mode
+├── modes/              # One module per app mode (see table above)
 ├── config/             # Keybinding persistence
 ├── ui/
 └── tools/
