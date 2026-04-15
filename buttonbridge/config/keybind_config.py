@@ -245,6 +245,54 @@ class KeybindConfig:
             }
         )
         
+        # 15. Notes Mode
+        self.modes["notes"] = ModeConfig(
+            name="Notes",
+            description="Apple Notes",
+            button_map={
+                1: KeybindAction("new_note",   "New Note",          "cmd+n",       1),
+                2: KeybindAction("new_folder", "New Folder",        "cmd+shift+n", 2),
+                3: KeybindAction("search",     "Search",            "cmd+f",       3),
+                4: KeybindAction("delete",     "Delete Note",       "cmd+delete",  4),
+                5: KeybindAction("bold",       "Bold",              "cmd+b",       5),
+                6: KeybindAction("italic",     "Italic",            "cmd+i",       6),
+                7: KeybindAction("checklist",  "Toggle Checklist",  "cmd+shift+l", 7),
+                8: KeybindAction("back",       "Navigate Back",     "cmd+[",       8),
+            }
+        )
+
+        # 16. Word Mode
+        self.modes["word"] = ModeConfig(
+            name="Word",
+            description="Microsoft Word",
+            button_map={
+                1: KeybindAction("save",         "Save",          "cmd+s",       1),
+                2: KeybindAction("find",         "Find",          "cmd+f",       2),
+                3: KeybindAction("bold",         "Bold",          "cmd+b",       3),
+                4: KeybindAction("italic",       "Italic",        "cmd+i",       4),
+                5: KeybindAction("undo",         "Undo",          "cmd+z",       5),
+                6: KeybindAction("redo",         "Redo",          "cmd+shift+z", 6),
+                7: KeybindAction("page_up",      "Page Up",       "pageup",      7),
+                8: KeybindAction("page_down",    "Page Down",     "pagedown",    8),
+            }
+        )
+
+        # 17. Outlook Mode
+        self.modes["outlook"] = ModeConfig(
+            name="Outlook",
+            description="Microsoft Outlook",
+            button_map={
+                1: KeybindAction("new_email",    "New Email",       "cmd+n",       1),
+                2: KeybindAction("reply",        "Reply",           "cmd+r",       2),
+                3: KeybindAction("reply_all",    "Reply All",       "cmd+shift+r", 3),
+                4: KeybindAction("forward",      "Forward",         "cmd+j",       4),
+                5: KeybindAction("send",         "Send",            "cmd+return",  5),
+                6: KeybindAction("delete",       "Delete",          "delete",      6),
+                7: KeybindAction("next_message", "Next Message",    "cmd+]",       7),
+                8: KeybindAction("prev_message", "Previous Message","cmd+[",       8),
+            }
+        )
+
         # 14. Phone Mode
         self.modes["phone"] = ModeConfig(
             name="Phone",

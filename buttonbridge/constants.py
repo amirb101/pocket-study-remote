@@ -118,6 +118,11 @@ class BundleID:
     ANKI = "net.ankiweb.dtop"
     NOTION = "notion.id"
     FIGMA = "com.figma.Desktop"
+    NOTES = "com.apple.Notes"
+
+    # Microsoft Office
+    WORD = "com.microsoft.Word"
+    OUTLOOK = "com.microsoft.Outlook"
 
     # Communication
     MESSAGES = "com.apple.MobileSMS"

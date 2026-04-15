@@ -17,13 +17,16 @@ from .modes.facetime_mode import FaceTimeMode
 from .modes.finder_mode import FinderMode
 from .modes.global_mode import GlobalMode
 from .modes.messages_mode import MessagesMode
+from .modes.notes_mode import NotesMode
 from .modes.notion_mode import NotionMode
 from .modes.obsidian_mode import ObsidianMode
+from .modes.outlook_mode import OutlookMode
 from .modes.phone_mode import PhoneMode
 from .modes.preview_mode import PreviewMode
 from .modes.spotify_mode import SpotifyMode
 from .modes.vscode_mode import VSCodeMode
 from .modes.whatsapp_mode import WhatsAppMode
+from .modes.word_mode import WordMode
 from .routing.action_router import ActionRouter
 from .ui.menu_bar import MenuBarApp
 
@@ -78,8 +81,11 @@ def _build_registry() -> ModeRegistry:
 
     # Productivity
     registry.register(AnkiMode(), bundle_ids=[BundleID.ANKI])
+    registry.register(NotesMode(), bundle_ids=[BundleID.NOTES])
     registry.register(ObsidianMode(), bundle_ids=[BundleID.OBSIDIAN])
     registry.register(NotionMode(), bundle_ids=[BundleID.NOTION])
+    registry.register(OutlookMode(), bundle_ids=[BundleID.OUTLOOK])
+    registry.register(WordMode(), bundle_ids=[BundleID.WORD])
 
     # System apps
     registry.register(FinderMode(), bundle_ids=[BundleID.FINDER])

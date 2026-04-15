@@ -70,7 +70,10 @@ ButtonBridge polls the frontmost app's bundle identifier and routes button press
 | **Anki** | Anki |
 | **Obsidian** | Obsidian |
 | **Notion** | Notion |
+| **Notes** | Apple Notes |
 | **VS Code** | Visual Studio Code, Cursor |
+| **Word** | Microsoft Word |
+| **Outlook** | Microsoft Outlook |
 | **Finder** | Finder |
 | **Preview** | Preview |
 | **Messages** | Messages |
@@ -118,6 +121,15 @@ Command palette · Quick switcher · Daily note · Toggle checklist · Insert te
 
 ### Notion
 Quick find · New page · Toggle todo · Slash command · Back/Forward · Command palette
+
+### Notes
+New note · New folder · Search · Delete · Bold · Italic · Toggle checklist · Navigate back
+
+### Word
+Save · Find · Bold · Italic · Undo · Redo · Page up/down · Zoom in/out · Word count · New document
+
+### Outlook
+New email · Reply · Reply all · Forward · Send · Delete · Search · Next/Prev message · Mark as read
 
 ### VS Code / Cursor
 Command palette · Quick open · Toggle terminal · Go to definition · Find · Save · New file · Close tab
