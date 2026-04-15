@@ -1,233 +1,156 @@
 # ButtonBridge
 
-A context-aware macOS menu bar app that maps a Bluetooth gamepad (for example an **8BitDo Micro**) to keyboard shortcuts and system actions. It detects the **frontmost application** and switches controller mappings automatically.
+**Turn a Bluetooth gamepad into a Mac keyboard remote.**
 
-There is **no main document window** — only the menu bar icon (and a Dock tile while you run it from Terminal). Background work starts at launch; you do not need to click anything to “start” the app.
+ButtonBridge lives in your menu bar and maps controller buttons to keyboard shortcuts — automatically switching mappings based on whichever app is in the foreground. Open Spotify and get media controls. Switch to a browser and get tab navigation. No window, no fuss.
 
-**Repository:** https://github.com/amirb101/buttonbridge
-
----
-
-## Pre-built app (no Python required)
-
-Build a drag-and-drop **`.app`** on your Mac, zip it, and share it. Recipients install it like any small utility: Applications folder, Accessibility, Bluetooth.
-
-- **Beginner-oriented steps (developer + recipient):** [docs/beginner-installation-guide.md](docs/beginner-installation-guide.md)
-- **Build command:** `./scripts/build_mac_app.sh` → `dist/ButtonBridge.app` ([PyInstaller](https://pyinstaller.org); version pinned in `requirements-build.txt`)
-
-The first PyInstaller build is the most sensitive to environment (PyObjC + GameController). If the `.app` misbehaves on another Mac, the same guide includes a **fallback** (run from source with `./scripts/run.sh`).
+**Supported controllers:** anything macOS recognises as a Game Controller (8BitDo Micro, Xbox, DualSense, and more).
 
 ---
 
-## How modes work
+## Install
 
-1. **App detection** periodically reads the active app’s bundle identifier.
-2. **Mode registry** (`buttonbridge/main.py`) maps that bundle ID to a mode class (Spotify, Browser, Global, …).
-3. If nothing matches, **Global** mode is used as the fallback.
-4. Each mode exposes a list of **actions** (play/pause, new tab, …). Your **keybindings** map physical buttons → action IDs. Edit mappings from the menu bar (keybinding editor subprocess).
+### Option A — Pre-built app (recommended)
 
-Bundle IDs live in `buttonbridge/constants.py`. If a mode never activates for an app you care about, add or correct the bundle ID and register it in `_build_registry()`.
-
----
-
-## Mode reference (all built-in modes)
-
-Summary: which app(s) activate each mode. Exact bundle strings are in `constants.py` → `BundleID`.
-
-| Mode | `id` | Activated when frontmost app is |
-|------|------|----------------------------------|
-| **Global** | `global` | Fallback — any app not matched below |
-| **Browser** | `browser` | Chrome, Safari, Arc, Edge, Brave, Firefox (incl. Nightly), Opera, Vivaldi, Orion, Zen, Comet |
-| **Spotify** | `spotify` | Spotify |
-| **Apple Music** | `apple_music` | Apple Music |
-| **Anki** | `anki` | Anki |
-| **Obsidian** | `obsidian` | Obsidian |
-| **Notion** | `notion` | Notion |
-| **Finder** | `finder` | Finder |
-| **Preview** | `preview` | Preview |
-| **VS Code** | `vscode` | Visual Studio Code or Cursor |
-| **Messages** | `messages` | Messages |
-| **WhatsApp** | `whatsapp` | WhatsApp |
-| **FaceTime** | `facetime` | FaceTime |
-| **Phone** | `phone` | Phone (`com.apple.mobilephone` — verify on your OS if the app does not switch mode) |
-
-### Global (`global`)
-
-System-wide shortcuts and utilities (many use AppleScript or small helpers, not only raw keys):
-
-- Play / Pause, Next track, Previous track (Spotify via AppleScript)
-- Volume up / down, Toggle mute
-- Screenshot (region), Screenshot (full screen)
-- Mission Control, Spotlight, Lock screen
-- Open Obsidian, Open Spotify
-- Switch space left / right
-
-### Browser (`browser`)
-
-Standard macOS browser shortcuts (same idea across the browsers in the table above):
-
-- New tab, Close tab, Reopen closed tab, New window
-- Page back / forward, Previous / next tab
-- Scroll up / down (Page Up / Page Down)
-- Tab search, Focus address bar, Bookmark page
-
-### Spotify (`spotify`)
-
-- Play/pause, Next / previous track
-- Volume up / down (in-app)
-- Shuffle, Repeat, Like/unlike, Search
-
-### Apple Music (`apple_music`)
-
-- Play/pause, Next / previous track
-- Volume up / down, Love track, Shuffle, Search
-
-### Anki (`anki`)
-
-- Show answer (`Space`)
-- Rate card: Again (`1`), Hard (`2`), Good (`3`), Easy (`4`)
-- Undo, Bury card, Suspend card
-
-### Obsidian (`obsidian`)
-
-Uses Obsidian’s default shortcuts where noted, plus **custom chords** you should bind in Obsidian → **Settings → Hotkeys** to match:
-
-| Action in ButtonBridge | Suggested Obsidian hotkey |
-|------------------------|-------------------------|
-| Today’s daily note | `Ctrl+Shift+D` |
-| Toggle checklist | `Ctrl+Shift+C` |
-| Insert template | `Ctrl+Shift+T` |
-| Graph view | `Ctrl+Shift+G` |
-
-Also includes: Command palette, Quick switcher, Navigate back/forward, Toggle sidebar, Search all files, New note, Search current file — align or remap in the keybinding GUI if your vault differs.
-
-### Notion (`notion`)
-
-- Quick find, New page, Toggle todo, Slash command
-- Go back / forward, Command palette
-
-### Finder (`finder`)
-
-- New folder, Quick Look, Get Info, Search
-- Go back / forward, Move to Trash
-
-### Preview (`preview`)
-
-- Next / previous page, Zoom in / out, Actual size
-- Share, Rotate left / right
-
-### VS Code (`vscode`)
-
-Active for **VS Code** and **Cursor**:
-
-- Command palette, Quick open, Toggle terminal
-- Go to definition, Find, Save, New file, Close tab
-
-### Messages (`messages`)
-
-- New message, Send
-- Next / previous conversation, Search, Chat info
-
-### WhatsApp (`whatsapp`)
-
-- New chat, Send, Search, Search in chat
-- Archive chat, Mute chat
-
-### FaceTime (`facetime`)
-
-- Answer / decline / end call
-- Toggle mute, Toggle camera, Flip camera
-- Video effects, Full screen
-
-### Phone (`phone`)
-
-- Answer / decline / end call
-- Toggle mute
-- Keypad, Contacts, Recents, Voicemail
-
-If Phone mode does not trigger, run:
+Build the `.app` once and it runs on any Mac without Python:
 
 ```bash
-mdls -name kMDItemCFBundleIdentifier /System/Applications/Phone.app
-# or: /Applications/Phone.app
+./scripts/build_mac_app.sh
 ```
 
-and update `BundleID.PHONE` in `constants.py` to match your Mac.
+Output: `dist/ButtonBridge.app`. Drag it into **Applications**, then follow the [setup steps](#setup) below.
 
----
+> For sharing with others: zip `ButtonBridge.app` and distribute the archive. See [docs/beginner-installation-guide.md](docs/beginner-installation-guide.md) for a step-by-step recipient guide.
 
-## Keybindings and config
-
-- **Editor:** launched from the menu bar (separate process so Tkinter stays on its own main thread).
-- **Storage:** `~/.buttonbridge/keybindings.json` (path may vary slightly by version — check `buttonbridge/config/keybind_config.py` for `CONFIG_FILE`).
-- **Per mode:** each tab lists that mode’s **actions**; you assign **gamepad buttons** (and optional combo behaviour where supported).
-- Unmapped actions simply do nothing until you assign them.
-
-Defaults are recreated when you reset; merge behaviour for old JSON files is defined in code.
-
----
-
-## Setup
-
-### 1. Controller
-
-Pair via Bluetooth: hold the pairing button until the lights flash, then add the device in **System Settings → Bluetooth**.
-
-On macOS the app uses **Apple GameController** for input. If the pad never connects, try the controller’s **mode switch** (e.g. **X** or **S** for a standard gamepad profile). The `button_logger` tool may use pygame/SDL for diagnostics.
-
-### 2. Python environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3. Accessibility permission
-
-The app posts keyboard events via the accessibility stack. There is no `.app` bundle: macOS grants access to the **Python interpreter** you actually run.
-
-1. Start the app the same way you always will (e.g. `./scripts/run.sh` or `python -m buttonbridge` inside the venv).
-2. Read the startup log for the interpreter path to add if keystrokes fail.
-3. **System Settings → Privacy & Security → Accessibility →** use **+** and add that `python3` binary (⌘⇧G in the picker helps).
-
-If you use **Cursor’s** terminal, you may need that interpreter on the list, not only Terminal.app. Remove stale paths after recreating `.venv`.
-
-### 4. Run
+### Option B — Run from source
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m buttonbridge
-```
-
-Or:
-
-```bash
-./scripts/run.sh
+# or: ./scripts/run.sh
 ```
 
 ---
 
-## Verify button mapping
+## Setup
 
-```bash
-python -m buttonbridge.tools.button_logger
-```
+### 1. Pair your controller
 
-Press each control and compare indices to `buttonbridge/constants.py` → `Controller.ButtonIndex` if anything differs on your hardware.
+**System Settings → Bluetooth** — put the pad in pairing mode and connect it. Confirm it appears under **System Settings → Game Controllers**.
 
-If the main app shows “Not connected”, check **System Settings → Game Controllers**, re-pair if needed, and confirm DEBUG logs mention GameController.
+If the app shows "Not Connected", try switching the controller's input mode (e.g. the X/S switch on an 8BitDo) so macOS recognises it as a standard gamepad.
+
+### 2. Grant Accessibility permission
+
+ButtonBridge sends keystrokes on your behalf, which requires one permission:
+
+1. Launch `ButtonBridge.app` — the 🎮 icon should appear in your menu bar.
+2. Open **System Settings → Privacy & Security → Accessibility**.
+3. Enable **ButtonBridge** (click **+** → **Applications** → **ButtonBridge** if it isn't listed yet).
+
+> Running from source? Add the Python interpreter to that list instead. The menu bar has an **Open Accessibility Settings…** shortcut for quick access.
+
+### 3. Calibrate (first run)
+
+Click the menu bar icon → **Calibrate Controller…** and press each button when prompted. This maps the physical buttons on your specific pad to ButtonBridge's internal layout.
 
 ---
 
-## Confirm Comet’s bundle ID (optional)
+## How it works
+
+ButtonBridge polls the frontmost app's bundle identifier and routes button presses through the matching **mode**. If no mode matches, **Global** mode handles the input.
+
+| Mode | Activates for |
+|------|--------------|
+| **Global** | Fallback — any unmatched app |
+| **Browser** | Chrome, Safari, Arc, Firefox, Edge, Brave, Opera, Vivaldi, Orion, Zen, Comet |
+| **Spotify** | Spotify |
+| **Apple Music** | Apple Music |
+| **Anki** | Anki |
+| **Obsidian** | Obsidian |
+| **Notion** | Notion |
+| **VS Code** | Visual Studio Code, Cursor |
+| **Finder** | Finder |
+| **Preview** | Preview |
+| **Messages** | Messages |
+| **WhatsApp** | WhatsApp |
+| **FaceTime** | FaceTime |
+| **Phone** | Phone |
+
+---
+
+## Keybindings
+
+Click **Hotkey List…** in the menu bar to see your current mappings. To edit them, run:
 
 ```bash
-mdls -name kMDItemCFBundleIdentifier /Applications/Comet.app
+python -m buttonbridge --buttonbridge-keybind-gui
 ```
 
-If it differs from `ai.perplexity.comet`, update `buttonbridge/constants.py` → `BundleID.COMET`.
+Or use the keybinding editor launched at first startup. Mappings are saved to `~/.buttonbridge/keybindings.json`.
+
+Each mode has a list of **actions** (e.g. `next_track`, `new_tab`). You assign a gamepad button to each action. Unassigned actions do nothing.
+
+---
+
+## Mode reference
+
+### Global
+Play/Pause · Next/Prev track · Volume up/down · Mute · Screenshot · Mission Control · Spotlight · Lock screen · Switch space · Open Obsidian · Open Spotify
+
+### Browser
+New tab · Close tab · Reopen closed tab · Back/Forward · Prev/Next tab · Scroll · Tab search · Address bar · Bookmark
+
+### Spotify
+Play/Pause · Next/Prev track · Volume · Shuffle · Repeat · Like/Unlike · Search
+
+### Apple Music
+Play/Pause · Next/Prev track · Volume · Love · Shuffle · Search
+
+### Anki
+Show answer · Again / Hard / Good / Easy · Undo · Bury · Suspend
+
+### Obsidian
+Command palette · Quick switcher · Daily note · Toggle checklist · Insert template · Graph view · Navigate back/forward · Toggle sidebar · Search · New note
+
+> Obsidian actions that send custom chords require matching hotkeys in **Obsidian → Settings → Hotkeys**. Suggested mappings are in the keybinding editor.
+
+### Notion
+Quick find · New page · Toggle todo · Slash command · Back/Forward · Command palette
+
+### VS Code / Cursor
+Command palette · Quick open · Toggle terminal · Go to definition · Find · Save · New file · Close tab
+
+### Finder
+New folder · Quick Look · Get Info · Search · Back/Forward · Move to Trash
+
+### Preview
+Next/Prev page · Zoom in/out · Actual size · Rotate · Share
+
+### Messages
+New message · Send · Next/Prev conversation · Search · Chat info
+
+### WhatsApp
+New chat · Send · Search · Archive · Mute
+
+### FaceTime / Phone
+Answer · Decline · End call · Toggle mute · Toggle camera
+
+---
+
+## Adding a mode
+
+1. Create `buttonbridge/modes/yourapp_mode.py` — subclass `ConfigurableMode`.
+2. Add the bundle ID to `buttonbridge/constants.py` → `BundleID`.
+3. Register it in `buttonbridge/main.py` → `_build_registry()`.
+4. Add default keybindings in `buttonbridge/config/keybind_config.py`.
+
+To find any app's bundle ID:
+
+```bash
+mdls -name kMDItemCFBundleIdentifier /Applications/YourApp.app
+```
 
 ---
 
@@ -235,41 +158,32 @@ If it differs from `ai.perplexity.comet`, update `buttonbridge/constants.py` →
 
 ```
 buttonbridge/
-├── __main__.py
-├── main.py
-├── constants.py
-├── core/
-├── controller/
-├── detection/
-├── routing/
-├── executors/
-├── modes/              # One module per app mode (see table above)
-├── config/             # Keybinding persistence
-├── ui/
-└── tools/
+├── __main__.py         Entry point; startup dialog
+├── main.py             Controller manager, mode registry
+├── constants.py        Bundle IDs, button indices, timing
+├── controller/         GameController input backend
+├── detection/          Frontmost-app polling
+├── routing/            Mode switching logic
+├── executors/          Keystroke / AppleScript execution
+├── modes/              One file per app mode
+├── config/             Keybinding persistence
+└── ui/                 Menu bar, keybind GUI
 ```
 
 ---
 
-## Adding a new mode
+## Troubleshooting
 
-1. Add `buttonbridge/modes/yourapp_mode.py` (subclass `ConfigurableMode`).
-2. Add bundle ID(s) in `buttonbridge/constants.py` → `BundleID`.
-3. Register in `buttonbridge/main.py` → `_build_registry()`.
-4. Add defaults in `buttonbridge/config/keybind_config.py` if you want GUI rows out of the box.
-
----
-
-## Architecture notes
-
-**AppleScript** is often run via `osascript` in a subprocess for clarity and easy debugging.
-
-**App detection** uses a short-interval poll from a background thread so it does not fight the AppKit main loop owned by rumps.
-
-**Gamepad input** on macOS is wired through **GameController** in the main app path; pygame may still appear in tools or fallbacks depending on your checkout.
+| Symptom | Fix |
+|---------|-----|
+| "Not Connected" in menu | Re-pair Bluetooth; try the controller's mode switch; check System Settings → Game Controllers |
+| Button presses do nothing | Verify Accessibility permission is granted to **ButtonBridge** (not Terminal or Python) |
+| Wrong mode activates | Check bundle ID in `constants.py`; run `mdls -name kMDItemCFBundleIdentifier /path/to/App.app` to confirm |
+| App blocked by macOS | Right-click → **Open** on first launch; or Privacy & Security → **Open Anyway** |
+| Keybindings reset | Check `~/.buttonbridge/keybindings.json` exists and is valid JSON |
 
 ---
 
 ## License
 
-MIT — fork and adapt for your machine.
+MIT

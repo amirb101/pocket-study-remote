@@ -40,7 +40,7 @@ class MenuBarApp(rumps.App):
     def __init__(self, on_launch: "Callable[[], None]") -> None:  # noqa: F821
         logger.info("MenuBarApp.__init__ starting")
         super().__init__(
-            name="Pocket Study Remote",
+            name="ButtonBridge",
             title=_ICON_DISCONNECTED,
             quit_button=None,   # we add our own quit item below
         )
@@ -192,7 +192,7 @@ class MenuBarApp(rumps.App):
 
         self.menu.clear()
         self.menu = [
-            rumps.MenuItem("Pocket Study Remote (menu bar only — no window)", callback=None),
+            rumps.MenuItem("ButtonBridge", callback=None),
             None,
             rumps.MenuItem(f"Mode: {self._current_mode}", callback=None),
             rumps.MenuItem(connection_label, callback=None),
@@ -225,7 +225,7 @@ class MenuBarApp(rumps.App):
 
             def on_done():
                 rumps.notification(
-                    "Pocket Study Remote",
+                    "ButtonBridge",
                     "Calibration Complete",
                     "Controller mapping saved!",
                 )
