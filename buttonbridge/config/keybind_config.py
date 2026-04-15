@@ -39,7 +39,7 @@ class KeybindConfig:
         self._create_defaults()
     
     def _create_defaults(self):
-        """Create default configurations for all 13 modes."""
+        """Create default configurations for all built-in modes."""
         
         # 1. Browser Mode (Chrome/Safari)
         self.modes["browser"] = ModeConfig(
@@ -169,7 +169,23 @@ class KeybindConfig:
             }
         )
         
-        # 9. Notion Mode
+        # 9. Anki Mode
+        self.modes["anki"] = ModeConfig(
+            name="Anki",
+            description="Spaced-repetition study flow",
+            button_map={
+                1: KeybindAction("show_answer", "Show answer", "space", 1),
+                2: KeybindAction("again", "Rate Again", "1", 2),
+                3: KeybindAction("hard", "Rate Hard", "2", 3),
+                4: KeybindAction("good", "Rate Good", "3", 4),
+                5: KeybindAction("easy", "Rate Easy", "4", 5),
+                6: KeybindAction("undo", "Undo", "cmd+z", 6),
+                7: KeybindAction("bury", "Bury card", "-", 7),
+                8: KeybindAction("suspend", "Suspend card", "@", 8),
+            }
+        )
+
+        # 10. Notion Mode
         self.modes["notion"] = ModeConfig(
             name="Notion",
             description="Workspace management",
@@ -185,7 +201,7 @@ class KeybindConfig:
             }
         )
         
-        # 10. Messages Mode
+        # 11. Messages Mode
         self.modes["messages"] = ModeConfig(
             name="Messages",
             description="Messaging app controls",
@@ -199,7 +215,7 @@ class KeybindConfig:
             }
         )
         
-        # 11. WhatsApp Mode
+        # 12. WhatsApp Mode
         self.modes["whatsapp"] = ModeConfig(
             name="WhatsApp",
             description="WhatsApp messaging",
@@ -215,7 +231,7 @@ class KeybindConfig:
             }
         )
         
-        # 12. FaceTime Mode
+        # 13. FaceTime Mode
         self.modes["facetime"] = ModeConfig(
             name="FaceTime",
             description="Video calling controls",
@@ -229,7 +245,7 @@ class KeybindConfig:
             }
         )
         
-        # 13. Phone Mode
+        # 14. Phone Mode
         self.modes["phone"] = ModeConfig(
             name="Phone",
             description="Phone call controls",

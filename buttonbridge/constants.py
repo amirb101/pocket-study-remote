@@ -115,6 +115,7 @@ class BundleID:
     CURSOR = "com.todesktop.230313mzl4w4u92"  # Cursor IDE
     
     # Productivity
+    ANKI = "net.ankiweb.dtop"
     NOTION = "notion.id"
     FIGMA = "com.figma.Desktop"
 

@@ -40,6 +40,7 @@ Summary: which app(s) activate each mode. Exact bundle strings are in `constants
 | **Browser** | `browser` | Chrome, Safari, Arc, Edge, Brave, Firefox (incl. Nightly), Opera, Vivaldi, Orion, Zen, Comet |
 | **Spotify** | `spotify` | Spotify |
 | **Apple Music** | `apple_music` | Apple Music |
+| **Anki** | `anki` | Anki |
 | **Obsidian** | `obsidian` | Obsidian |
 | **Notion** | `notion` | Notion |
 | **Finder** | `finder` | Finder |
@@ -80,6 +81,12 @@ Standard macOS browser shortcuts (same idea across the browsers in the table abo
 
 - Play/pause, Next / previous track
 - Volume up / down, Love track, Shuffle, Search
+
+### Anki (`anki`)
+
+- Show answer (`Space`)
+- Rate card: Again (`1`), Hard (`2`), Good (`3`), Easy (`4`)
+- Undo, Bury card, Suspend card
 
 ### Obsidian (`obsidian`)
 

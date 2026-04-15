@@ -11,6 +11,7 @@ from .controller.controller_manager import ControllerManager
 from .core.mode_registry import ModeRegistry
 from .detection.app_detector import AppDetector
 from .modes.apple_music_mode import AppleMusicMode
+from .modes.anki_mode import AnkiMode
 from .modes.browser_mode import BrowserMode
 from .modes.facetime_mode import FaceTimeMode
 from .modes.finder_mode import FinderMode
@@ -76,6 +77,7 @@ def _build_registry() -> ModeRegistry:
     registry.register(BrowserMode(), bundle_ids=BundleID.ALL_BROWSERS)
 
     # Productivity
+    registry.register(AnkiMode(), bundle_ids=[BundleID.ANKI])
     registry.register(ObsidianMode(), bundle_ids=[BundleID.OBSIDIAN])
     registry.register(NotionMode(), bundle_ids=[BundleID.NOTION])
 
