@@ -15,10 +15,11 @@ class NotionMode(ConfigurableMode):
         action_map = {
             "quick_find": keystroke("k", ["cmd"], id="notion-quick-find", name="Quick Find"),
             "new_page": keystroke("n", ["cmd"], id="notion-new-page", name="New Page"),
-            "toggle_todo": keystroke("enter", ["cmd"], id="notion-todo", name="Toggle Todo"),
+            "toggle_todo": keystroke("return", ["cmd"], id="notion-todo", name="Toggle Todo"),
             "slash_command": keystroke("slash", id="notion-slash", name="Slash Command"),
             "back": keystroke("left_bracket", ["cmd"], id="notion-back", name="Go Back"),
             "forward": keystroke("right_bracket", ["cmd"], id="notion-forward", name="Go Forward"),
             "command_palette": keystroke("p", ["cmd", "shift"], id="notion-cmd", name="Command Palette"),
+            "duplicate": keystroke("d", ["cmd"], id="notion-duplicate", name="Duplicate"),
         }
         return action_map.get(action_id)

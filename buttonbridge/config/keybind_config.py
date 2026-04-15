@@ -49,8 +49,8 @@ class KeybindConfig:
                 1: KeybindAction("new_tab", "Open new tab", "cmd+t", 1),
                 2: KeybindAction("close_tab", "Close current tab", "cmd+w", 2),
                 3: KeybindAction("reload", "Reload page", "cmd+r", 3),
-                4: KeybindAction("back", "Go back", "cmd+left", 4),
-                5: KeybindAction("forward", "Go forward", "cmd+right", 5),
+                4: KeybindAction("page_back", "Go back", "cmd+[", 4),
+                5: KeybindAction("page_forward", "Go forward", "cmd+]", 5),
                 6: KeybindAction("find", "Find in page", "cmd+f", 6),
                 7: KeybindAction("next_tab", "Next tab", "cmd+shift+right", 7),
                 8: KeybindAction("prev_tab", "Previous tab", "cmd+shift+left", 8),
@@ -79,11 +79,11 @@ class KeybindConfig:
             description="Note-taking and knowledge management",
             button_map={
                 1: KeybindAction("new_note", "New note", "cmd+n", 1),
-                2: KeybindAction("quick_switch", "Quick switcher", "cmd+o", 2),
+                2: KeybindAction("quick_switcher", "Quick switcher", "cmd+o", 2),
                 3: KeybindAction("command_palette", "Command palette", "cmd+p", 3),
-                4: KeybindAction("graph_view", "Open graph view", "cmd+g", 4),
-                5: KeybindAction("daily_note", "Open daily note", "cmd+d", 5),
-                6: KeybindAction("search", "Search notes", "cmd+shift+f", 6),
+                4: KeybindAction("graph_view", "Open graph view", "ctrl+shift+g", 4),
+                5: KeybindAction("daily_note", "Open daily note", "ctrl+shift+d", 5),
+                6: KeybindAction("search_all", "Search all files", "cmd+shift+f", 6),
                 7: KeybindAction("toggle_preview", "Toggle preview", "cmd+e", 7),
                 8: KeybindAction("insert_link", "Insert link", "cmd+k", 8),
             }
@@ -95,13 +95,13 @@ class KeybindConfig:
             description="System-wide shortcuts",
             button_map={
                 1: KeybindAction("spotlight", "Open Spotlight", "cmd+space", 1),
-                2: KeybindAction("screenshot", "Screenshot", "cmd+shift+3", 2),
+                2: KeybindAction("screenshot", "Screenshot (region)", "cmd+shift+4", 2),
                 3: KeybindAction("mission_control", "Mission Control", "ctrl+up", 3),
-                4: KeybindAction("app_switcher", "App switcher", "cmd+tab", 4),
+                4: KeybindAction("play_pause", "Play / Pause (Spotify)", "space", 4),
                 5: KeybindAction("lock_screen", "Lock screen", "cmd+ctrl+q", 5),
-                6: KeybindAction("do_not_disturb", "Toggle Do Not Disturb", "cmd+shift+d", 6),
-                7: KeybindAction("clipboard_history", "Clipboard history", "cmd+shift+v", 7),
-                8: KeybindAction("system_prefs", "System Preferences", "cmd+space", 8),
+                6: KeybindAction("volume_up", "Volume up", "cmd+up", 6),
+                7: KeybindAction("volume_down", "Volume down", "cmd+down", 7),
+                8: KeybindAction("mute", "Toggle mute", "mute", 8),
             }
         )
         
@@ -114,10 +114,10 @@ class KeybindConfig:
                 2: KeybindAction("quick_look", "Quick Look", "space", 2),
                 3: KeybindAction("search", "Search", "cmd+f", 3),
                 4: KeybindAction("get_info", "Get info", "cmd+i", 4),
-                5: KeybindAction("show_hidden", "Show hidden files", "cmd+shift+.", 5),
-                6: KeybindAction("arrange", "Arrange by name", "cmd+ctrl+1", 6),
-                7: KeybindAction("preview", "Show preview", "cmd+shift+p", 7),
-                8: KeybindAction("delete", "Move to trash", "cmd+backspace", 8),
+                5: KeybindAction("go_back", "Go back", "cmd+[", 5),
+                6: KeybindAction("go_forward", "Go forward", "cmd+]", 6),
+                7: KeybindAction("trash", "Move to trash", "cmd+delete", 7),
+                8: KeybindAction("show_hidden", "Show hidden files", "cmd+shift+.", 8),
             }
         )
         
@@ -131,9 +131,9 @@ class KeybindConfig:
                 3: KeybindAction("prev_track", "Previous track", "left", 3),
                 4: KeybindAction("volume_up", "Volume up", "up", 4),
                 5: KeybindAction("volume_down", "Volume down", "down", 5),
-                6: KeybindAction("lyrics", "Show lyrics", "cmd+l", 6),
-                7: KeybindAction("mini_player", "Mini player", "cmd+shift+m", 7),
-                8: KeybindAction("love", "Love song", "cmd+l", 8),
+                6: KeybindAction("shuffle", "Toggle shuffle", "cmd+s", 6),
+                7: KeybindAction("search", "Search", "cmd+f", 7),
+                8: KeybindAction("love", "Love song", "l", 8),
             }
         )
         
@@ -144,8 +144,8 @@ class KeybindConfig:
             button_map={
                 1: KeybindAction("zoom_in", "Zoom in", "cmd++", 1),
                 2: KeybindAction("zoom_out", "Zoom out", "cmd+-", 2),
-                3: KeybindAction("fit_to_width", "Fit to width", "cmd+3", 3),
-                4: KeybindAction("fit_to_window", "Fit to window", "cmd+9", 4),
+                3: KeybindAction("actual_size", "Actual size", "cmd+0", 3),
+                4: KeybindAction("share", "Share", "cmd+s", 4),
                 5: KeybindAction("next_page", "Next page", "right", 5),
                 6: KeybindAction("prev_page", "Previous page", "left", 6),
                 7: KeybindAction("rotate_left", "Rotate left", "cmd+l", 7),
@@ -208,12 +208,12 @@ class KeybindConfig:
             button_map={
                 1: KeybindAction("quick_find", "Quick find", "cmd+k", 1),
                 2: KeybindAction("new_page", "New page", "cmd+n", 2),
-                3: KeybindAction("toggle_sidebar", "Toggle sidebar", "cmd+\\", 3),
-                4: KeybindAction("comment", "Add comment", "cmd+shift+m", 4),
-                5: KeybindAction("duplicate", "Duplicate", "cmd+d", 5),
-                6: KeybindAction("delete", "Delete block", "cmd+shift+backspace", 6),
-                7: KeybindAction("move_up", "Move block up", "cmd+shift+up", 7),
-                8: KeybindAction("move_down", "Move block down", "cmd+shift+down", 8),
+                3: KeybindAction("toggle_todo", "Toggle todo", "cmd+return", 3),
+                4: KeybindAction("slash_command", "Slash command", "slash", 4),
+                5: KeybindAction("back", "Go back", "cmd+[", 5),
+                6: KeybindAction("forward", "Go forward", "cmd+]", 6),
+                7: KeybindAction("command_palette", "Command palette", "cmd+shift+p", 7),
+                8: KeybindAction("duplicate", "Duplicate", "cmd+d", 8),
             }
         )
         
@@ -223,11 +223,11 @@ class KeybindConfig:
             description="Messaging app controls",
             button_map={
                 1: KeybindAction("new_message", "New message", "cmd+n", 1),
-                2: KeybindAction("search", "Search conversations", "cmd+f", 2),
-                3: KeybindAction("details", "Show details", "cmd+i", 3),
-                4: KeybindAction("emoji", "Emoji picker", "cmd+ctrl+space", 4),
-                5: KeybindAction("attach", "Attach file", "cmd+shift+a", 5),
-                6: KeybindAction("close", "Close conversation", "cmd+w", 6),
+                2: KeybindAction("send_message", "Send", "return", 2),
+                3: KeybindAction("search", "Search conversations", "cmd+f", 3),
+                4: KeybindAction("details", "Show details", "cmd+i", 4),
+                5: KeybindAction("next_conversation", "Next chat", "cmd+]", 5),
+                6: KeybindAction("prev_conversation", "Previous chat", "cmd+[", 6),
             }
         )
         
@@ -237,13 +237,11 @@ class KeybindConfig:
             description="WhatsApp messaging",
             button_map={
                 1: KeybindAction("new_chat", "New chat", "cmd+n", 1),
-                2: KeybindAction("search", "Search chats", "cmd+f", 2),
-                3: KeybindAction("archive", "Archive chat", "cmd+e", 3),
-                4: KeybindAction("mute", "Mute chat", "cmd+shift+m", 4),
-                5: KeybindAction("pin", "Pin chat", "cmd+shift+p", 5),
-                6: KeybindAction("profile", "View profile", "cmd+p", 6),
-                7: KeybindAction("settings", "Settings", "cmd+\",", 7),
-                8: KeybindAction("emoji", "Emoji picker", "cmd+ctrl+space", 8),
+                2: KeybindAction("send", "Send", "return", 2),
+                3: KeybindAction("search", "Search chats", "cmd+f", 3),
+                4: KeybindAction("search_in_chat", "Search in chat", "cmd+shift+f", 4),
+                5: KeybindAction("archive_chat", "Archive chat", "cmd+shift+e", 5),
+                6: KeybindAction("mute_chat", "Mute chat", "cmd+shift+m", 6),
             }
         )
         
@@ -252,12 +250,14 @@ class KeybindConfig:
             name="FaceTime",
             description="Video calling controls",
             button_map={
-                1: KeybindAction("mute", "Mute/unmute", "cmd+shift+m", 1),
-                2: KeybindAction("camera", "Camera on/off", "cmd+shift+v", 2),
-                3: KeybindAction("end_call", "End call", "cmd+shift+e", 3),
-                4: KeybindAction("fullscreen", "Full screen", "cmd+shift+f", 4),
-                5: KeybindAction("effects", "Video effects", "cmd+shift+e", 5),
-                6: KeybindAction("flip", "Flip camera", "cmd+r", 6),
+                1: KeybindAction("answer_call", "Answer call", "return", 1),
+                2: KeybindAction("decline_call", "Decline call", "d", 2),
+                3: KeybindAction("mute_toggle", "Mute/unmute", "m", 3),
+                4: KeybindAction("camera_toggle", "Camera on/off", "v", 4),
+                5: KeybindAction("end_call", "End call", "escape", 5),
+                6: KeybindAction("full_screen", "Full screen", "f", 6),
+                7: KeybindAction("effects", "Video effects", "e", 7),
+                8: KeybindAction("flip_camera", "Flip camera", "c", 8),
             }
         )
         
@@ -357,12 +357,14 @@ class KeybindConfig:
             name="Phone",
             description="Phone call controls",
             button_map={
-                1: KeybindAction("answer", "Answer call", "cmd+shift+a", 1),
-                2: KeybindAction("decline", "Decline call", "cmd+shift+d", 2),
-                3: KeybindAction("mute", "Mute call", "cmd+shift+m", 3),
-                4: KeybindAction("keypad", "Show keypad", "cmd+k", 4),
-                5: KeybindAction("speaker", "Speaker on/off", "cmd+shift+s", 5),
-                6: KeybindAction("end_call", "End call", "cmd+shift+e", 6),
+                1: KeybindAction("answer_call", "Answer call", "return", 1),
+                2: KeybindAction("decline_call", "Decline call", "d", 2),
+                3: KeybindAction("mute_toggle", "Mute call", "m", 3),
+                4: KeybindAction("keypad", "Show keypad", "k", 4),
+                5: KeybindAction("contacts", "Contacts", "l", 5),
+                6: KeybindAction("recents", "Recents", "r", 6),
+                7: KeybindAction("voicemail", "Voicemail", "v", 7),
+                8: KeybindAction("end_call", "End call", "escape", 8),
             }
         )
     

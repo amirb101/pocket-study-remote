@@ -21,6 +21,8 @@ class BrowserMode(ConfigurableMode):
         """Create action from ID."""
         action_map = {
             "new_tab": keystroke("t", ["cmd"], id="browser-new-tab", name="New Tab"),
+            "reload": keystroke("r", ["cmd"], id="browser-reload", name="Reload Page"),
+            "find": keystroke("f", ["cmd"], id="browser-find", name="Find in Page"),
             "go_back": keystroke("left_bracket", ["cmd"], id="browser-go-back", name="Go Back"),
             "close_tab": keystroke("w", ["cmd"], id="browser-close-tab", name="Close Tab"),
             "reopen_tab": keystroke("t", ["cmd", "shift"], id="browser-reopen-tab", name="Reopen Closed Tab"),

@@ -20,5 +20,6 @@ class FinderMode(ConfigurableMode):
             "go_back": keystroke("[", ["cmd"], id="finder-back", name="Go Back"),
             "go_forward": keystroke("]", ["cmd"], id="finder-forward", name="Go Forward"),
             "trash": keystroke("delete", ["cmd"], id="finder-trash", name="Move to Trash"),
+            "show_hidden": keystroke("period", ["cmd", "shift"], id="finder-hidden", name="Show Hidden Files"),
         }
         return action_map.get(action_id)

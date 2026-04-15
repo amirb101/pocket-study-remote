@@ -82,5 +82,15 @@ class ObsidianMode(ConfigurableMode):
                 id="obsidian-search",
                 name="Search Current File",
             ),
+            "toggle_preview": keystroke(
+                "e", ["cmd"],
+                id="obsidian-toggle-preview",
+                name="Toggle Preview",
+            ),
+            "insert_link": keystroke(
+                "k", ["cmd"],
+                id="obsidian-insert-link",
+                name="Insert Link",
+            ),
         }
         return action_map.get(action_id)

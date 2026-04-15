@@ -104,7 +104,7 @@ Each mode has a list of **actions** (e.g. `next_track`, `new_tab`). You assign a
 ## Mode reference
 
 ### Global
-Play/Pause · Next/Prev track · Volume up/down · Mute · Screenshot · Mission Control · Spotlight · Lock screen · Switch space · Open Obsidian · Open Spotify
+Spotlight · Screenshot (region) · Mission Control · Play/Pause (Spotify) · Lock screen · Volume up/down · Mute — other actions (Obsidian, Spotify, spaces) are available in the keybinding editor
 
 ### Browser
 New tab · Close tab · Reopen closed tab · Back/Forward · Prev/Next tab · Scroll · Tab search · Address bar · Bookmark

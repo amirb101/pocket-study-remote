@@ -15,7 +15,7 @@ class FaceTimeMode(ConfigurableMode):
         action_map = {
             "answer_call": keystroke("return", id="ft-answer", name="Answer Call"),
             "decline_call": keystroke("d", id="ft-decline", name="Decline Call"),
-            "end_call": keystroke("esc", id="ft-end", name="End Call"),
+            "end_call": keystroke("escape", id="ft-end", name="End Call"),
             "mute_toggle": keystroke("m", id="ft-mute", name="Toggle Mute"),
             "camera_toggle": keystroke("v", id="ft-camera", name="Toggle Camera"),
             "flip_camera": keystroke("c", id="ft-flip", name="Flip Camera"),
