@@ -293,7 +293,35 @@ class KeybindConfig:
             }
         )
 
-        # 14. Phone Mode
+        # 14. Photo Booth Mode
+        self.modes["photo_booth"] = ModeConfig(
+            name="Photo Booth",
+            description="Apple Photo Booth",
+            button_map={
+                1: KeybindAction("shutter",    "Take Photo / Record", "space",       1),
+                2: KeybindAction("effects",    "Effects",             "cmd+e",       2),
+                3: KeybindAction("flip_photo", "Flip Photo",          "cmd+f",       3),
+                4: KeybindAction("share",      "Share",               "cmd+shift+i", 4),
+                5: KeybindAction("delete",     "Delete",              "delete",      5),
+            }
+        )
+
+        # 15. ChatGPT Mode
+        self.modes["chatgpt"] = ModeConfig(
+            name="ChatGPT",
+            description="ChatGPT desktop app",
+            button_map={
+                1: KeybindAction("new_chat",     "New Chat",            "cmd+n",       1),
+                2: KeybindAction("send",         "Send Message",        "return",      2),
+                3: KeybindAction("new_line",     "New Line",            "shift+return",3),
+                4: KeybindAction("search_chats", "Search Chats",        "cmd+k",       4),
+                5: KeybindAction("copy_last",    "Copy Last Response",  "cmd+shift+c", 5),
+                6: KeybindAction("stop",         "Stop Generating",     "cmd+.",       6),
+                7: KeybindAction("close",        "Close Chat",          "cmd+w",       7),
+            }
+        )
+
+        # 16. Phone Mode
         self.modes["phone"] = ModeConfig(
             name="Phone",
             description="Phone call controls",

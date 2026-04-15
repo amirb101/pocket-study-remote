@@ -13,6 +13,7 @@ from .detection.app_detector import AppDetector
 from .modes.apple_music_mode import AppleMusicMode
 from .modes.anki_mode import AnkiMode
 from .modes.browser_mode import BrowserMode
+from .modes.chatgpt_mode import ChatGPTMode
 from .modes.facetime_mode import FaceTimeMode
 from .modes.finder_mode import FinderMode
 from .modes.global_mode import GlobalMode
@@ -22,6 +23,7 @@ from .modes.notion_mode import NotionMode
 from .modes.obsidian_mode import ObsidianMode
 from .modes.outlook_mode import OutlookMode
 from .modes.phone_mode import PhoneMode
+from .modes.photo_booth_mode import PhotoBoothMode
 from .modes.preview_mode import PreviewMode
 from .modes.spotify_mode import SpotifyMode
 from .modes.vscode_mode import VSCodeMode
@@ -86,6 +88,8 @@ def _build_registry() -> ModeRegistry:
     registry.register(NotionMode(), bundle_ids=[BundleID.NOTION])
     registry.register(OutlookMode(), bundle_ids=[BundleID.OUTLOOK])
     registry.register(WordMode(), bundle_ids=[BundleID.WORD])
+    registry.register(PhotoBoothMode(), bundle_ids=[BundleID.PHOTO_BOOTH])
+    registry.register(ChatGPTMode(), bundle_ids=[BundleID.CHATGPT])
 
     # System apps
     registry.register(FinderMode(), bundle_ids=[BundleID.FINDER])

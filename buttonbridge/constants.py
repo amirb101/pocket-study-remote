@@ -124,6 +124,14 @@ class BundleID:
     WORD = "com.microsoft.Word"
     OUTLOOK = "com.microsoft.Outlook"
 
+    # Apple
+    PHOTO_BOOTH = "com.apple.PhotoBooth"
+
+    # AI
+    # ChatGPT desktop: verify with:
+    #   mdls -name kMDItemCFBundleIdentifier /Applications/ChatGPT.app
+    CHATGPT = "com.openai.chat"
+
     # Communication
     MESSAGES = "com.apple.MobileSMS"
     WHATSAPP = "net.whatsapp.WhatsApp"

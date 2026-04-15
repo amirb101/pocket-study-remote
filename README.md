@@ -75,6 +75,8 @@ ButtonBridge polls the frontmost app's bundle identifier and routes button press
 | **Word** | Microsoft Word |
 | **Outlook** | Microsoft Outlook |
 | **Finder** | Finder |
+| **Photo Booth** | Photo Booth |
+| **ChatGPT** | ChatGPT desktop app |
 | **Preview** | Preview |
 | **Messages** | Messages |
 | **WhatsApp** | WhatsApp |
@@ -121,6 +123,14 @@ Command palette · Quick switcher · Daily note · Toggle checklist · Insert te
 
 ### Notion
 Quick find · New page · Toggle todo · Slash command · Back/Forward · Command palette
+
+### Photo Booth
+Take photo / record · Effects · Flip photo · Share · Delete
+
+### ChatGPT
+New chat · Send · New line · Search chats · Copy last response · Stop generating · Close
+
+> ChatGPT bundle ID may vary. If the mode doesn't activate, run `mdls -name kMDItemCFBundleIdentifier /Applications/ChatGPT.app` and update `BundleID.CHATGPT` in `constants.py`.
 
 ### Notes
 New note · New folder · Search · Delete · Bold · Italic · Toggle checklist · Navigate back
