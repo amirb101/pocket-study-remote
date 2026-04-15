@@ -97,17 +97,9 @@ def show_startup_choice():
 
 def launch_keybinding_gui(readonly: bool = False) -> bool:
     """Launch the keybinding GUI in a subprocess (separate Tk main loop)."""
-    import subprocess
+    from buttonbridge.ui.keybind_launch import launch_keybinding_gui as _launch
 
-    frozen = getattr(sys, "frozen", False)
-    if frozen:
-        cmd = [sys.executable, "--buttonbridge-keybind-gui"]
-    else:
-        cmd = [sys.executable, "-m", "buttonbridge", "--buttonbridge-keybind-gui"]
-    if readonly:
-        cmd.append("--readonly")
-    result = subprocess.run(cmd, check=False)
-    return result.returncode == 0
+    return _launch(readonly=readonly)
 
 
 def main():

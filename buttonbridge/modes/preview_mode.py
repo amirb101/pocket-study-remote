@@ -15,7 +15,7 @@ class PreviewMode(ConfigurableMode):
         action_map = {
             "next_page": keystroke("right_arrow", id="preview-next", name="Next Page"),
             "prev_page": keystroke("left_arrow", id="preview-prev", name="Previous Page"),
-            "zoom_in": keystroke("plus", ["cmd"], id="preview-zoom-in", name="Zoom In"),
+            "zoom_in": keystroke("equal", ["cmd"], id="preview-zoom-in", name="Zoom In"),
             "zoom_out": keystroke("minus", ["cmd"], id="preview-zoom-out", name="Zoom Out"),
             "actual_size": keystroke("0", ["cmd"], id="preview-actual", name="Actual Size"),
             "share": keystroke("s", ["cmd"], id="preview-share", name="Share"),

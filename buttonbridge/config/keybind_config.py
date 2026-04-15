@@ -142,7 +142,7 @@ class KeybindConfig:
             name="Preview",
             description="Image/PDF viewing",
             button_map={
-                1: KeybindAction("zoom_in", "Zoom in", "cmd++", 1),
+                1: KeybindAction("zoom_in", "Zoom in", "cmd+=", 1),
                 2: KeybindAction("zoom_out", "Zoom out", "cmd+-", 2),
                 3: KeybindAction("actual_size", "Actual size", "cmd+0", 3),
                 4: KeybindAction("share", "Share", "cmd+s", 4),
