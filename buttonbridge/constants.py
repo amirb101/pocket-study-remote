@@ -128,8 +128,6 @@ class BundleID:
     PHOTO_BOOTH = "com.apple.PhotoBooth"
 
     # AI
-    # ChatGPT desktop: verify with:
-    #   mdls -name kMDItemCFBundleIdentifier /Applications/ChatGPT.app
     CHATGPT = "com.openai.chat"
 
     # Communication

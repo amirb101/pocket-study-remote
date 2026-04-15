@@ -130,7 +130,6 @@ Take photo / record · Effects · Flip photo · Share · Delete
 ### ChatGPT
 New chat · Send · New line · Search chats · Copy last response · Stop generating · Close
 
-> ChatGPT bundle ID may vary. If the mode doesn't activate, run `mdls -name kMDItemCFBundleIdentifier /Applications/ChatGPT.app` and update `BundleID.CHATGPT` in `constants.py`.
 
 ### Notes
 New note · New folder · Search · Delete · Bold · Italic · Toggle checklist · Navigate back
