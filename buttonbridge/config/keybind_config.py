@@ -40,7 +40,11 @@ class KeybindConfig:
     
     def _create_defaults(self):
         """Create default configurations for all built-in modes."""
-        
+        # Default gamepad slot convention (button_id → face button order in GamepadButton):
+        #   1=A primary "new/open", 2=B "close/dismiss" where the app supports it,
+        #   3–4 support actions, 5–6 search/navigation, 7–8 secondary / tabs / extras.
+        # Browser, VS Code, and Cursor share the same slot for close-tab (cmd+w) on 2.
+
         # 1. Browser Mode (Chrome/Safari)
         self.modes["browser"] = ModeConfig(
             name="Browser",
@@ -159,13 +163,13 @@ class KeybindConfig:
             description="Code editor shortcuts",
             button_map={
                 1: KeybindAction("command_palette", "Command palette", "cmd+shift+p", 1),
-                2: KeybindAction("quick_open", "Quick open", "cmd+p", 2),
+                2: KeybindAction("close_tab", "Close tab", "cmd+w", 2),
                 3: KeybindAction("toggle_terminal", "Toggle terminal", "ctrl+`", 3),
                 4: KeybindAction("go_definition", "Go to definition", "f12", 4),
                 5: KeybindAction("find", "Find", "cmd+f", 5),
                 6: KeybindAction("save", "Save", "cmd+s", 6),
                 7: KeybindAction("new_file", "New file", "cmd+n", 7),
-                8: KeybindAction("close_tab", "Close tab", "cmd+w", 8),
+                8: KeybindAction("quick_open", "Quick open", "cmd+p", 8),
             }
         )
 
@@ -175,13 +179,13 @@ class KeybindConfig:
             description="Cursor editor shortcuts",
             button_map={
                 1: KeybindAction("command_palette", "Command palette", "cmd+shift+p", 1),
-                2: KeybindAction("quick_open", "Quick open", "cmd+p", 2),
+                2: KeybindAction("close_tab", "Close tab", "cmd+w", 2),
                 3: KeybindAction("toggle_terminal", "Toggle terminal", "ctrl+`", 3),
                 4: KeybindAction("go_definition", "Go to definition", "f12", 4),
                 5: KeybindAction("find", "Find", "cmd+f", 5),
                 6: KeybindAction("save", "Save", "cmd+s", 6),
                 7: KeybindAction("new_file", "New file", "cmd+n", 7),
-                8: KeybindAction("close_tab", "Close tab", "cmd+w", 8),
+                8: KeybindAction("quick_open", "Quick open", "cmd+p", 8),
             }
         )
 
