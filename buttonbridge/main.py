@@ -14,6 +14,8 @@ from .modes.apple_music_mode import AppleMusicMode
 from .modes.anki_mode import AnkiMode
 from .modes.browser_mode import BrowserMode
 from .modes.chatgpt_mode import ChatGPTMode
+from .modes.claude_desktop_mode import ClaudeDesktopMode
+from .modes.cursor_mode import CursorMode
 from .modes.facetime_mode import FaceTimeMode
 from .modes.finder_mode import FinderMode
 from .modes.global_mode import GlobalMode
@@ -90,13 +92,15 @@ def _build_registry() -> ModeRegistry:
     registry.register(WordMode(), bundle_ids=[BundleID.WORD])
     registry.register(PhotoBoothMode(), bundle_ids=[BundleID.PHOTO_BOOTH])
     registry.register(ChatGPTMode(), bundle_ids=[BundleID.CHATGPT])
+    registry.register(ClaudeDesktopMode(), bundle_ids=[BundleID.CLAUDE_DESKTOP])
 
     # System apps
     registry.register(FinderMode(), bundle_ids=[BundleID.FINDER])
     registry.register(PreviewMode(), bundle_ids=[BundleID.PREVIEW])
 
     # Development
-    registry.register(VSCodeMode(), bundle_ids=[BundleID.VS_CODE, BundleID.CURSOR])
+    registry.register(VSCodeMode(), bundle_ids=[BundleID.VS_CODE])
+    registry.register(CursorMode(), bundle_ids=[BundleID.CURSOR])
 
     # Communication
     registry.register(MessagesMode(), bundle_ids=[BundleID.MESSAGES])

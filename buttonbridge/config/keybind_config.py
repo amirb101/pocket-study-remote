@@ -160,15 +160,31 @@ class KeybindConfig:
             button_map={
                 1: KeybindAction("command_palette", "Command palette", "cmd+shift+p", 1),
                 2: KeybindAction("quick_open", "Quick open", "cmd+p", 2),
-                3: KeybindAction("go_to_line", "Go to line", "ctrl+g", 3),
-                4: KeybindAction("toggle_terminal", "Toggle terminal", "ctrl+`", 4),
-                5: KeybindAction("search_files", "Search in files", "cmd+shift+f", 5),
-                6: KeybindAction("format_doc", "Format document", "shift+opt+f", 6),
-                7: KeybindAction("toggle_sidebar", "Toggle sidebar", "cmd+b", 7),
-                8: KeybindAction("multi_cursor", "Add cursor", "cmd+opt+down", 8),
+                3: KeybindAction("toggle_terminal", "Toggle terminal", "ctrl+`", 3),
+                4: KeybindAction("go_definition", "Go to definition", "f12", 4),
+                5: KeybindAction("find", "Find", "cmd+f", 5),
+                6: KeybindAction("save", "Save", "cmd+s", 6),
+                7: KeybindAction("new_file", "New file", "cmd+n", 7),
+                8: KeybindAction("close_tab", "Close tab", "cmd+w", 8),
             }
         )
-        
+
+        # 8b. Cursor Mode (same defaults as VS Code; edit separately if you want)
+        self.modes["cursor"] = ModeConfig(
+            name="Cursor",
+            description="Cursor editor shortcuts",
+            button_map={
+                1: KeybindAction("command_palette", "Command palette", "cmd+shift+p", 1),
+                2: KeybindAction("quick_open", "Quick open", "cmd+p", 2),
+                3: KeybindAction("toggle_terminal", "Toggle terminal", "ctrl+`", 3),
+                4: KeybindAction("go_definition", "Go to definition", "f12", 4),
+                5: KeybindAction("find", "Find", "cmd+f", 5),
+                6: KeybindAction("save", "Save", "cmd+s", 6),
+                7: KeybindAction("new_file", "New file", "cmd+n", 7),
+                8: KeybindAction("close_tab", "Close tab", "cmd+w", 8),
+            }
+        )
+
         # 9. Anki Mode
         self.modes["anki"] = ModeConfig(
             name="Anki",
@@ -317,6 +333,21 @@ class KeybindConfig:
                 4: KeybindAction("search_chats", "Search Chats",        "cmd+k",       4),
                 5: KeybindAction("copy_last",    "Copy Last Response",  "cmd+shift+c", 5),
                 6: KeybindAction("stop",         "Stop Generating",     "cmd+.",       6),
+                7: KeybindAction("close",        "Close Chat",          "cmd+w",       7),
+            }
+        )
+
+        # 15b. Claude desktop
+        self.modes["claude"] = ModeConfig(
+            name="Claude",
+            description="Claude desktop app",
+            button_map={
+                1: KeybindAction("new_chat",     "New Chat",            "cmd+n",       1),
+                2: KeybindAction("send",         "Send Message",        "return",      2),
+                3: KeybindAction("new_line",     "New Line",            "shift+return",3),
+                4: KeybindAction("search_chats", "Search Chats",        "cmd+k",       4),
+                5: KeybindAction("settings",     "Settings",            "cmd+comma",   5),
+                6: KeybindAction("stop",         "Stop",                "escape",      6),
                 7: KeybindAction("close",        "Close Chat",          "cmd+w",       7),
             }
         )

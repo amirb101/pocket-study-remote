@@ -129,6 +129,7 @@ class BundleID:
 
     # AI
     CHATGPT = "com.openai.chat"
+    CLAUDE_DESKTOP = "com.anthropic.claudefordesktop"
 
     # Communication
     MESSAGES = "com.apple.MobileSMS"

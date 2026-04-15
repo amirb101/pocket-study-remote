@@ -48,50 +48,24 @@ class ConfigurableMode(AppMode):
         if not mode_config:
             return result
 
-        for mapping in mode_config.mappings:
-            # Only handle simple presses in button_map
-            if mapping.input_type.value != "simple":
+        ordered = list(GamepadButton)
+        for bid, act in sorted(mode_config.button_map.items(), key=lambda x: x[0]):
+            if not act.enabled:
                 continue
-            if not mapping.button:
+            idx = (act.button_id or bid) - 1
+            if idx < 0 or idx >= len(ordered):
                 continue
-
-            action = mode_config.get_action_by_id(mapping.action_id)
-            if not action:
-                continue
-
-            # Convert to keystroke action
-            keystroke_action = self._create_action_from_id(mapping.action_id)
+            button = ordered[idx]
+            keystroke_action = self._create_action_from_id(act.name)
             if keystroke_action:
-                result[mapping.button] = keystroke_action
+                result[button] = keystroke_action
 
         return result
 
     @property
     def combo_map(self) -> dict[ButtonCombo, Action]:
-        """Build combo map from configuration."""
-        result: dict[ButtonCombo, Action] = {}
-        mode_config = self._get_mode_config()
-        if not mode_config:
-            return result
-
-        for mapping in mode_config.mappings:
-            # Only handle combos
-            if mapping.input_type.value != "combo":
-                continue
-            if not mapping.primary_button or not mapping.held_buttons:
-                continue
-
-            action = mode_config.get_action_by_id(mapping.action_id)
-            if not action:
-                continue
-
-            # Create combo
-            combo = ButtonCombo(mapping.primary_button, *mapping.held_buttons)
-            keystroke_action = self._create_action_from_id(mapping.action_id)
-            if keystroke_action:
-                result[combo] = keystroke_action
-
-        return result
+        """Combo bindings (not yet used in JSON defaults)."""
+        return {}
 
     def _create_action_from_id(self, action_id: str) -> Action | None:
         """

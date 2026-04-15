@@ -71,7 +71,9 @@ ButtonBridge polls the frontmost app's bundle identifier and routes button press
 | **Obsidian** | Obsidian |
 | **Notion** | Notion |
 | **Notes** | Apple Notes |
-| **VS Code** | Visual Studio Code, Cursor |
+| **VS Code** | Visual Studio Code |
+| **Cursor** | Cursor |
+| **Claude** | Claude desktop app |
 | **Word** | Microsoft Word |
 | **Outlook** | Microsoft Outlook |
 | **Finder** | Finder |
@@ -140,8 +142,14 @@ Save · Find · Bold · Italic · Undo · Redo · Page up/down · Zoom in/out ·
 ### Outlook
 New email · Reply · Reply all · Forward · Send · Delete · Search · Next/Prev message · Mark as read
 
-### VS Code / Cursor
+### VS Code
 Command palette · Quick open · Toggle terminal · Go to definition · Find · Save · New file · Close tab
+
+### Cursor
+Same defaults as VS Code (separate mode so you can remap per editor).
+
+### Claude
+New chat · Send · New line · Search chats · Settings · Stop · Close chat
 
 ### Finder
 New folder · Quick Look · Get Info · Search · Back/Forward · Move to Trash

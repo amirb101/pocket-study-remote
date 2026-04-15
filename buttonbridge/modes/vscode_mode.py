@@ -5,7 +5,7 @@ from ..core.configurable_mode import ConfigurableMode
 
 
 class VSCodeMode(ConfigurableMode):
-    """Active when VS Code or Cursor is frontmost."""
+    """Active when Visual Studio Code is frontmost."""
 
     id = "vscode"
     display_name = "VS Code"
