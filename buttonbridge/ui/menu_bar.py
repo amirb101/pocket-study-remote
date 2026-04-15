@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import sys
 
 import rumps  # type: ignore[import]
 
@@ -200,6 +201,10 @@ class MenuBarApp(rumps.App):
                 "Calibrate Controller…",
                 callback=self._calibrate_controller,
             ),
+            rumps.MenuItem(
+                "Hotkey List…",
+                callback=self._open_hotkey_list,
+            ),
             None,
             rumps.MenuItem(
                 "Open Accessibility Settings…",
@@ -248,3 +253,12 @@ class MenuBarApp(rumps.App):
             ],
             check=False,
         )
+
+    def _open_hotkey_list(self, _) -> None:
+        """Open read-only keybind/hotkey viewer at runtime."""
+        frozen = getattr(sys, "frozen", False)
+        if frozen:
+            cmd = [sys.executable, "--buttonbridge-keybind-gui", "--readonly"]
+        else:
+            cmd = [sys.executable, "-m", "buttonbridge", "--buttonbridge-keybind-gui", "--readonly"]
+        subprocess.run(cmd, check=False)

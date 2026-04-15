@@ -1,14 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Build: ./scripts/build_mac_app.sh   → dist/ButtonBridge.app
-from pathlib import Path
-
 block_cipher = None
 
-REPO = Path(SPECPATH).resolve().parent
-
 a = Analysis(
-    [str(REPO / "packaging" / "run_app.py")],
-    pathex=[str(REPO)],
+    ["packaging/run_app.py"],
+    pathex=["."],
     binaries=[],
     datas=[],
     hiddenimports=[

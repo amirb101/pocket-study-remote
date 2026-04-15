@@ -6,7 +6,7 @@ import sys
 if "--buttonbridge-keybind-gui" in sys.argv:
     from buttonbridge.ui.keybind_gui import run_standalone
 
-    run_standalone()
+    run_standalone(readonly="--readonly" in sys.argv)
     raise SystemExit(0)
 
 
@@ -56,6 +56,11 @@ def show_startup_choice():
     def on_no():
         result[0] = False
         root.destroy()
+
+    def on_close():
+        # Treat window close as "launch now" to avoid a dead-end.
+        result[0] = False
+        root.destroy()
     
     # Button frame
     btn_frame = tk.Frame(frame)
@@ -66,7 +71,7 @@ def show_startup_choice():
         text="Yes - Configure First",
         command=on_yes,
         bg="#2196F3",
-        fg="white",
+        fg="black",
         font=("Helvetica", 11, "bold"),
         width=20,
         padx=10,
@@ -77,17 +82,20 @@ def show_startup_choice():
         btn_frame,
         text="No - Launch Now",
         command=on_no,
+        bg="#e6e6e6",
+        fg="black",
         font=("Helvetica", 11),
         width=15,
         padx=10,
         pady=5,
     ).pack(side=tk.LEFT, padx=5)
-    
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
     root.mainloop()
     return result[0]
 
 
-def launch_keybinding_gui() -> bool:
+def launch_keybinding_gui(readonly: bool = False) -> bool:
     """Launch the keybinding GUI in a subprocess (separate Tk main loop)."""
     import subprocess
 
@@ -96,6 +104,8 @@ def launch_keybinding_gui() -> bool:
         cmd = [sys.executable, "--buttonbridge-keybind-gui"]
     else:
         cmd = [sys.executable, "-m", "buttonbridge", "--buttonbridge-keybind-gui"]
+    if readonly:
+        cmd.append("--readonly")
     result = subprocess.run(cmd, check=False)
     return result.returncode == 0
 
@@ -124,8 +134,21 @@ def main():
     
     # Check if launched with --no-gui flag (skip startup dialog)
     if "--no-gui" in sys.argv:
-        from buttonbridge.main import main as real_main
-        real_main()
+        try:
+            from buttonbridge.main import main as real_main
+            real_main()
+        except Exception as e:
+            import tkinter as tk
+            from tkinter import messagebox
+            import traceback
+
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                "ButtonBridge launch failed",
+                f"{e}\n\n{traceback.format_exc()}",
+            )
+            root.destroy()
         return
     
     # Show startup choice
@@ -135,12 +158,38 @@ def main():
         # User wants to configure first
         if launch_keybinding_gui():
             # After GUI closes, launch main app
-            from buttonbridge.main import main as real_main
-            real_main()
+            try:
+                from buttonbridge.main import main as real_main
+                real_main()
+            except Exception as e:
+                import tkinter as tk
+                from tkinter import messagebox
+                import traceback
+
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showerror(
+                    "ButtonBridge launch failed",
+                    f"{e}\n\n{traceback.format_exc()}",
+                )
+                root.destroy()
     else:
         # User wants to launch directly
-        from buttonbridge.main import main as real_main
-        real_main()
+        try:
+            from buttonbridge.main import main as real_main
+            real_main()
+        except Exception as e:
+            import tkinter as tk
+            from tkinter import messagebox
+            import traceback
+
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                "ButtonBridge launch failed",
+                f"{e}\n\n{traceback.format_exc()}",
+            )
+            root.destroy()
 
 
 if __name__ == "__main__":

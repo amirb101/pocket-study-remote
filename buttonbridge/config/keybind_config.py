@@ -346,6 +346,9 @@ def _config_to_gui_dict(cfg: KeybindConfig) -> dict[str, dict[str, str]]:
     for mode_id, mc in cfg.modes.items():
         inner: dict[str, str] = {}
         for bid, act in sorted(mc.button_map.items(), key=lambda x: x[0]):
+            if (act.button_id or bid) <= 0 or not act.enabled:
+                inner[act.name] = "Unassigned"
+                continue
             idx = (act.button_id or bid) - 1
             idx = max(0, min(len(ordered) - 1, idx))
             inner[act.name] = ordered[idx].value
@@ -376,6 +379,15 @@ def save_config(data: dict[str, dict[str, str]]) -> None:
             if act.name not in action_to_label:
                 continue
             label = action_to_label[act.name]
+            if label == "Unassigned":
+                mc.button_map[bid] = KeybindAction(
+                    name=act.name,
+                    description=act.description,
+                    key_sequence=act.key_sequence,
+                    button_id=0,
+                    enabled=False,
+                )
+                continue
             btn_id = next(
                 (i + 1 for i, b in enumerate(GamepadButton) if b.value == label),
                 act.button_id or bid,
@@ -388,3 +400,15 @@ def save_config(data: dict[str, dict[str, str]]) -> None:
                 enabled=act.enabled,
             )
     cfg.save()
+
+
+def load_hotkey_list() -> dict[str, dict[str, str]]:
+    """Return ``{ mode_id: { action_name: key_sequence } }`` for read-only UI."""
+    cfg = get_config()
+    out: dict[str, dict[str, str]] = {}
+    for mode_id, mc in cfg.modes.items():
+        inner: dict[str, str] = {}
+        for _bid, act in sorted(mc.button_map.items(), key=lambda x: x[0]):
+            inner[act.name] = act.key_sequence
+        out[mode_id] = inner
+    return out

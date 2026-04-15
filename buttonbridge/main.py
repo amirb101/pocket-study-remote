@@ -99,17 +99,7 @@ def _build_registry() -> ModeRegistry:
 
 def _make_controller(router: ActionRouter) -> ControllerManager:
     """Create and configure the controller manager."""
-    mgr = ControllerManager()
-
-    def on_button_press(button):
-        router.on_button_press(button)
-
-    def on_button_release(button):
-        router.on_button_release(button)
-
-    mgr.on_button_press = on_button_press
-    mgr.on_button_release = on_button_release
-    return mgr
+    return ControllerManager(on_button_change=router.button_changed)
 
 
 def main() -> None:
