@@ -515,13 +515,23 @@ def save_config(data: dict[str, dict[str, str]]) -> None:
     cfg.save()
 
 
-def load_hotkey_list() -> dict[str, dict[str, str]]:
-    """Return ``{ mode_id: { action_name: key_sequence } }`` for read-only UI."""
+def load_hotkey_list() -> dict[str, dict[str, dict[str, str]]]:
+    """Return per-mode action rows for the read-only hotkey list UI.
+
+    Shape: ``{ mode_id: { action_name: {"button": "…", "keys": "…"} } }``.
+    ``button`` is the gamepad control (same labels as the keybind editor);
+    ``keys`` is the macOS shortcut string sent when that button fires.
+    """
     cfg = get_config()
-    out: dict[str, dict[str, str]] = {}
+    button_by_mode = _config_to_gui_dict(cfg)
+    out: dict[str, dict[str, dict[str, str]]] = {}
     for mode_id, mc in cfg.modes.items():
-        inner: dict[str, str] = {}
+        inner: dict[str, dict[str, str]] = {}
+        labels = button_by_mode.get(mode_id, {})
         for _bid, act in sorted(mc.button_map.items(), key=lambda x: x[0]):
-            inner[act.name] = act.key_sequence
+            inner[act.name] = {
+                "button": labels.get(act.name, "Unassigned"),
+                "keys": act.key_sequence,
+            }
         out[mode_id] = inner
     return out

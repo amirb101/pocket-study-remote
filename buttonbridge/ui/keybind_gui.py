@@ -27,10 +27,10 @@ class KeybindGUI:
         self.root = root
         self.readonly = readonly
         self.root.title("ButtonBridge - Hotkey List" if readonly else "ButtonBridge - Keybind Editor")
-        self.root.geometry("500x480")
+        self.root.geometry("620x480" if readonly else "500x480")
         self.root.minsize(460, 360)
         
-        # Load configuration
+        # Load configuration (readonly: controller + macOS shortcut per action)
         self.config = load_hotkey_list() if readonly else load_config()
         self.modified_config = {mode: dict(actions) for mode, actions in self.config.items()}
         
@@ -51,6 +51,16 @@ class KeybindGUI:
             text="ButtonBridge Hotkey List" if self.readonly else "ButtonBridge Keybind Editor",
             font=("Helvetica", 16, "bold")
         ).pack(side="left")
+        if self.readonly:
+            hint = ttk.Frame(self.root, padding=(10, 0, 10, 4))
+            hint.pack(fill="x")
+            ttk.Label(
+                hint,
+                text="Each row shows which controller button is bound and which macOS shortcut it sends in this mode.",
+                font=("Helvetica", 9),
+                foreground="#555",
+                wraplength=580,
+            ).pack(anchor="w")
         
         # Mode selector (replaces crowded tabs)
         mode_selector = ttk.Frame(self.root, padding=(10, 0, 10, 5))
@@ -120,7 +130,12 @@ class KeybindGUI:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        canvas.create_window((0, 0), window=scroll_frame, anchor="nw", width=560)
+        canvas.create_window(
+            (0, 0),
+            window=scroll_frame,
+            anchor="nw",
+            width=600 if self.readonly else 560,
+        )
         canvas.configure(yscrollcommand=scrollbar.set)
         
         canvas.pack(side="left", fill="both", expand=True)
@@ -130,31 +145,48 @@ class KeybindGUI:
         ttk.Label(scroll_frame, text="Action", font=("Helvetica", 10, "bold")).grid(
             row=0, column=0, sticky="w", padx=5, pady=5
         )
-        ttk.Label(
-            scroll_frame,
-            text="Hotkey" if self.readonly else "Button",
-            font=("Helvetica", 10, "bold"),
-        ).grid(
-            row=0, column=1, sticky="w", padx=5, pady=5
-        )
+        if self.readonly:
+            ttk.Label(
+                scroll_frame,
+                text="Controller",
+                font=("Helvetica", 10, "bold"),
+            ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
+            ttk.Label(
+                scroll_frame,
+                text="Sends (macOS)",
+                font=("Helvetica", 10, "bold"),
+            ).grid(row=0, column=2, sticky="w", padx=5, pady=5)
+        else:
+            ttk.Label(
+                scroll_frame,
+                text="Button",
+                font=("Helvetica", 10, "bold"),
+            ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
         
         # Get actions for this mode
         actions = self.modified_config.get(mode_id, {})
         
         # Create dropdown for each action
-        for idx, (action_name, current_button) in enumerate(actions.items(), start=1):
+        for idx, (action_name, info) in enumerate(actions.items(), start=1):
             ttk.Label(scroll_frame, text=action_name).grid(
                 row=idx, column=0, sticky="w", padx=5, pady=3
             )
             
             if self.readonly:
-                value_var = tk.StringVar(value=current_button)
-                value_label = ttk.Label(scroll_frame, textvariable=value_var, width=22)
-                value_label.grid(row=idx, column=1, sticky="w", padx=5, pady=3)
-                self.bind_widgets[(mode_id, action_name)] = (value_label, value_var)
+                btn = info.get("button", "—")
+                keys = info.get("keys", "—")
+                btn_var = tk.StringVar(value=btn)
+                keys_var = tk.StringVar(value=keys)
+                ttk.Label(scroll_frame, textvariable=btn_var, width=14).grid(
+                    row=idx, column=1, sticky="w", padx=5, pady=3
+                )
+                ttk.Label(scroll_frame, textvariable=keys_var, width=28).grid(
+                    row=idx, column=2, sticky="w", padx=5, pady=3
+                )
+                self.bind_widgets[(mode_id, action_name)] = (btn_var, keys_var)
             else:
                 # Button dropdown
-                button_var = tk.StringVar(value=current_button)
+                button_var = tk.StringVar(value=info)
                 dropdown = ttk.Combobox(
                     scroll_frame,
                     textvariable=button_var,
@@ -213,6 +245,14 @@ class KeybindGUI:
     
     def _refresh_ui(self):
         """Refresh the UI with current configuration."""
+        if self.readonly:
+            for (mode, action), (btn_var, keys_var) in self.bind_widgets.items():
+                if mode in self.modified_config and action in self.modified_config[mode]:
+                    cell = self.modified_config[mode][action]
+                    if isinstance(cell, dict):
+                        btn_var.set(cell.get("button", ""))
+                        keys_var.set(cell.get("keys", ""))
+            return
         for (mode, action), (_, var) in self.bind_widgets.items():
             if mode in self.modified_config and action in self.modified_config[mode]:
                 var.set(self.modified_config[mode][action])
